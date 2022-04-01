@@ -503,4 +503,74 @@
   };
   ```
 
+##### 4. 判断一个对象是数组
+
+* 使用`instanceof`进行判断
+
+  `instanceof`可以用于判断指定构造函数的`prototype`属性是否出现在指定实例对象的原型链的任何位置，返回一个`Boolean`值
+
+  ```js
+  a = [];
+  console.log(a instanceof Array); //true
+  ```
+
+  然而也有例外，例如在多个全局环境（`multi-globals`）的情况下，为了保证不出现混乱，不同的全局环境（如`iframe`）中的数组原型就不是一样了，如下: `iframe`中的`Array`构造函数和全局`window`的的`Array`构造函数原型就不会全等
+
+  ```js
+  const iframe1 = document.createElement('iframe'); // 创建一个iframe对象
+  document.body.append(iframe1);
+  var xArray = windows.frames[0].Array; // 得到iframe1环境中的数组构造函数
+  
+  let arr = new xArray();
+  /* 因为iframe会产生新的全局环境 */
+  console.log(arr instanceof Array); //false
+  ```
+
+* 使用`constructor`进行判断
+
+  `constructor`会指向对象的构造函数，同样的一个对象的构造函数也是可以手动更改的：
+
+  ```js
+  let arr = [];
+  arr.constructor = Object
+  ```
+
+  而且同样会出现多个全局变量的情况
+
+* 使用`Object.prototype.toString.call`进行判断
+
+  `Object`原型中默认的`toString`方法会输出“`object`”+具体类型；数组之类的重写了这个方法，故而需要使用原型方法来`call`，它不仅能判断`Data`，`Array`之类的，还能判断`Number`，`String`这种原始值类型
+
+  ```js
+  console.log(Object.prototype.toString.call(/my-type/g); 
+  // [object RegEx]
+  let arr = [];
+  console.log(Object.prototype.toString.call(arr);
+  // [object Array]
+  console.log(Object.prototype.toString.call(1);
+  // [object Number]
+  ```
+
+  同样在多全局环境中也能输出理想结果
+
+- 使用`Array.isArray`
+
+  `Array.isArray`是ES5提出来的，简单好用，同样能解决多环境问题
+
+  ```
+  const arr = [];
+  console.log(Array.isArray(arr)); // true
+  ```
+
+  而且如果ES5之前不支持的话，可以自己封装一下
+
+  ```js
+  if(!Array.isArray){
+  	Array.isArray = function(arg){
+          return Object.prototype.toString.call(arg) === "[object Array]";
+      }
+  }
+  ```
+
+  
 
