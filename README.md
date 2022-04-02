@@ -16,11 +16,11 @@
 
    `深克隆`：对象所有的属性和值都会一层一层完全复制，新对象的修改不会影响原来的对象，如果克隆对象的某个值还是对象的话
 
-* 方法一：`JSON.parse(JSON.stringify())`
+* 方法一：`js.parse(js.stringify())`
 
 ​		原理：先把原对象转为字符串，然后再parse成一个全新的对象，就实现了内容的深度克隆
 
-​		问题：可以处理`Number`，`String`，`Array`这种能够被 `json`正确表示的数据结构，但是函数处理后会变为`null`，正则对象处理后会变为空对象`{}`
+​		问题：可以处理`Number`，`String`，`Array`这种能够被 `js`正确表示的数据结构，但是函数处理后会变为`null`，正则对象处理后会变为空对象`{}`
 
 - 方法二：自己写
 
@@ -222,7 +222,7 @@
 
   数据绑定方面：通常，原生对象上也能设置属性或者使用`data-*`属性，这样也能将数据绑定到DOM元素上，然后有缺陷，这样在任何脚本内，数据都运行在同样的上下文。而相较之下，`Map`和`WeakMap`能够方便的将数据*`私密`*地绑定到一个对象上
 
-* 结构化数据：`JSON`（`JavaScript Object Notion`）
+* 结构化数据：`js`（`JavaScript Object Notion`）
 
   是一种轻量级地数据交换格式，来源于JavaScript，同时也被多种语言所使用，其被用来构建通用地数据结构
 
@@ -811,23 +811,23 @@
   
   禁止缓存可以用以下的头：
   
-  ```json
+  ```js
   Cache-Control: no-strore
   ```
   
   缓存静态资源时可以让其同时存在公共缓存中
   
-  ```json
+  ```js
   Cache-Control:public, max-age=31536000
   ```
   
   若要设置成客户端可以缓存，但必须强制每次验证缓存
   
-  ```json
+  ```js
   Cache-Control: no-cache
   ```
   
-  ```json
+  ```js
   Cache-Control: max-age=0, must-revalidate
   ```
 
@@ -858,7 +858,7 @@
 
   再比如说，如果需要区分移动端和客户端的展示内容，避免再不同的终端展示错误的布局和内容呢等，就可以使用如下响应头：
 
-  ```json
+  ```js
   Vary：User-Agent
   ```
 
