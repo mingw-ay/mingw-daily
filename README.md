@@ -572,5 +572,297 @@
   }
   ```
 
+
+#### 2022-04-22
+
+1. ##### 二叉树的层平均值
+
+   给定一个**`非空`**二叉树的根节点root，以数组的形式返回每一层节点的平均值。保证精度在10^-5以内
+
+   仍旧采用队列先进先出，注意节点出去是shift
+
+   ```js
+   /**
+    * @param {TreeNode} root
+    * @return {number[]}
+    */
+   var averageOfLevels = function (root) {
+       const nodeQueue = [root];/* 队列辅助层序遍历 */
+       const resArr = [];
+       while (nodeQueue.length) {
+           /* 当前层的节点数 */
+           let size = nodeQueue.length;
+           let sum = 0;/* 初始化每一层的和 */
+           for (let i = 0; i < size; i++) {
+               let cur = nodeQueue.shift();
+               sum += cur.val;
+               if (cur.left) nodeQueue.push(cur.left);
+               if (cur.right) nodeQueue.push(cur.right);
+           }
+           resArr.push(sum / size);/* 当前层节点的平均值 */
+       }
+   
+       return resArr;
+   };
+   ```
+
+
+2. ##### N叉树的层序遍历
+
+   给定一个N叉树的`root`节点，返回层序遍历，其构造函数如下：
+
+   ```js
+   function Node(val,children) {
+       this.val = val;
+       this.children = children;
+    };
+   ```
+
+   采用递归，在递归函数中去循环递归调用所有子节点
+
+   ```js
+   /**
+    * @param {Node|null} root
+    * @return {number[][]}
+    */
+   var levelOrder = function (root) {
+       /* 采用递归的写法 */
+       if (!root) return [];
+       const resArr = [];
+       levelDown(resArr, root, 0);
+       return resArr;
+   
+       /* 递归，传入数组，当前节点，当前层级（从0开始） */
+       function levelDown(arr, node, level) {
+           /* 如果结果中还没有这一层，加一层 */
+           if (arr.length - 1 < level) {
+               arr[level] = [];
+           }
+           arr[level].push(node.val);
+   
+           /* 从左往右递归children，传入level+1 */
+           for (const child of node.children) {
+               if (child) levelDown(arr, child, level + 1);
+           }
+       }
+   };
+   ```
+
+3. ##### 在每个树行中找最大值
+
+   > 给定root，层序遍历，找到每一层的最大值
+
+   采用队列方法如下：
+
+   ```js
+   /**
+    * @param {TreeNode} root
+    * @return {number[]}
+    */
+   var largestValues = function (root) {
+       if (!root) return [];
+       /* 使用队列，先进先出 */
+       const resArr = [];
+       const nodesQueue = [root];
+   
+       while (nodesQueue.length) {
+           let size = nodesQueue.length;/* 得到当前层节点数 */
+           let max = nodesQueue[0].val;/* 初始化最大值 */
+   
+           while (size--) {
+               let cur = nodesQueue.shift();
+               /* 得到更大的 */
+               max = Math.max(max, cur.val);
+               if (cur.left) nodesQueue.push(cur.left);
+               if (cur.right) nodesQueue.push(cur.right);
+           }
+           resArr.push(max);
+       }
+   
+       return resArr;
+   };
+   ```
+
+
+4. ##### 反转二叉树
+
+   > 输入二叉树的根节点，然后左右翻转这颗二叉树，然后返回根节点
+
+* 递归，前序遍历，将每个节点的左右孩子都交换一下，不能中序遍历，因为这样原左边节点会翻转两次，原右边节点翻不到
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {TreeNode}
+   */
+  var invertTree = function (root) {
+      if (root) invertNode(root);
+      return root;
+  
+      function invertNode(node) {
+          /* 当前左右子节点交换一下 */
+          [node.left, node.right] = [node.right, node.left];
+  
+          /* 递归调用 */
+          if (node.left) invertNode(node.left);
+          if (node.right) invertNode(node.right);
+      }
+  };
+  ```
+
+* 直接用一个堆栈来存还没有翻转的节点
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {TreeNode}
+   */
+  var invertTree = function (root) {
+      if (!root) return root;
+      unInvertedNodes = [root];/* 一个堆栈存储还没翻转的节点 */
+      let len = 1;
+      while (len--) {
+          /* 得到当前要翻的节点 */
+          let cur = unInvertedNodes.pop();
+  
+          /* 翻转 */
+          [cur.left, cur.right] = [cur.right, cur.left];
+  
+          /* 存入 */
+          if (cur.left) unInvertedNodes[len++] = cur.left;
+          if (cur.right) unInvertedNodes[len++] = cur.right;
+      }
+  
+      return root;
+  };
+  ```
+
+* 也可以层序遍历，用一个队列来翻转
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {TreeNode}
+   */
+  var invertTree = function (root) {
+      if (!root) return root;
+      let unInvertedNodes = [root];/* 队列，层序遍历 */
+  
+      while (unInvertedNodes.length) {
+          let cur = unInvertedNodes.shift();
+  
+          /* 翻转 */
+          [cur.left, cur.right] = [cur.right, cur.left];
+  
+          if (cur.left) unInvertedNodes.push(cur.left);
+          if (cur.right) unInvertedNodes.push(cur.right);
+      }
+  
+      return root;
+  };
+  ```
+
+
+5. ##### HTTP缓存机制
+
+   > 借鉴资源：
+   >
+   > - `MDN`： [`HTTP缓存`](https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Caching#varying%20responses) 		[`Cache-Control`](https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Headers/Cache-Control)
+   > - 掘金：[`轻松理解HTTP缓存策略-蒋鹏飞`](https://segmentfault.com/a/1190000038562294)
+
+* 缓存是一种保存资源副本并且再下次请求时直接使用该副本的技术
+
+* HTTP缓存减少了等待时间和网络流量，进而减少了显示资源表示形式所需的时间。这使得网站更加具有响应性
+
+* 缓存种类很多，大致分为两类：`私有缓存`和`共享缓存`。共享缓存存储的响应能被多个用户使用，私有缓存则只针对特定用户。以下的HTTP缓存策略主要针对浏览器或者代理缓存；部署在服务器上的缓存还包括：`网管缓存`、`CDN`、`反向代理缓存`、`和负载均衡器`等。为站点和web应用提供更好的稳定性、性能和扩展性
+
+* `HTTP缓存策略`的存在是为了解决客户端和服务端的信息不对称问题。
+
+* `浏览器缓存`/`私有缓存`：针对单独用户，浏览器缓存拥有用户通过HTTP下载的所有文档；这些缓存一来为浏览过的网页提供前后向导航、保存网页、查看源码等功能。同样能够在某种程度上保证离线浏览。
+
+* `代理缓存`/共享缓存：热门资源通过架设一个web代理来作为本地网络基础的一部分提供给用户。减少网络拥堵和延迟。
+
+* 常见的需要使用到缓存的案例（一般是针对`GET`请求的响应）：
+
+  * 检索成功的响应，`GET`请求返回`200`，表示`ok`，包含html文档，图片或者文档的响应
+  * 永久重定向：`301`
+  * 错误响应（客户端方）：`404`页面
+  * 不完全响应：`206`，只返回部分信息
+  * 除了`GET`请求外，如果在响应中匹配到了被定义的cache键名（疑惑）
+  * 也可以通过一些关键字来有区分地存储和使用不同响应来组成缓存，如`Vary`键则决定了不同设备对应不同地缓存
+
+* `缓存控制技术`：
+
+* 主要是HTTP/1.1定义的`Cache-Control`头来决定应该采用哪种缓存策略，请求头和响应头都会带有这个属性，通过它提供的不同的值来决定采用哪种缓存策略。
+
+  常用的头如下：
+
+  | 属性              | 应用                                                         |
+  | ----------------- | :----------------------------------------------------------- |
+  | `no-store`        | 强制不缓存，不存储任何关于客户端请求和服务器响应的内容，每次都得重新请求内容 |
+  | `no-cache`        | 可以缓存，但每次发出的请求都会发到服务器重新验证缓存是否可用 |
+  | `private`         | 响应头可带，表示只能被单个用户缓存，不能作为共享缓存         |
+  | `public`          | 响应头可带，表示可以被任何中间人缓存，如代理服务器，`CDN`等，通常是不能被中间人缓存的页面，如带验证信息的页面或者请求方法为`POST` |
+  | `max-age`         | 表示缓存的过期时间，单位为秒；与`Expires`相反，它是相对于请求的时间，`Expires`是一个固定的时间 |
+  | `s-maxage`        | 覆盖`max-age`或者`Expires`头，仅适用于共享缓存               |
+  | `must-revalidate` | 表示资源过期后，必须在成功向服务器验证之后才能使用缓存资源，即`协商缓存` |
+  
+  `举例说明：`
+  
+  禁止缓存可以用以下的头：
+  
+  ```json
+  Cache-Control: no-strore
+  ```
+  
+  缓存静态资源时可以让其同时存在公共缓存中
+  
+  ```json
+  Cache-Control:public, max-age=31536000
+  ```
+  
+  若要设置成客户端可以缓存，但必须强制每次验证缓存
+  
+  ```json
+  Cache-Control: no-cache
+  ```
+  
+  ```json
+  Cache-Control: max-age=0, must-revalidate
+  ```
+
+* `Pragma`头
+
+  `Pragma`是`HTTP/1.0`标准中定义的一个`header`属性，其作用跟`Cache-Control：no-cache`相同，可以用于向后兼容`HTTP/1.0`的客户端
+
+* `Expires`头
+
+  包含过期的日期/时间，优先级低于`Cache-Control`响应头设置的`max-age`或者`s-maxage`
+
+* 故而在客户端发出请求是检索到有缓存时，会首先计算其新鲜度，如果有`Cache-control`的`max-age`或者`s-maxage`，则以它作为参考，否则就去看`Expires`头是否存在
+
+* 倘若已经缓存已经过期了，或者缓存的响应头中设置了使用缓存之前必须先进行缓存验证，就会在每次需要重新发出请求使用缓存时进行缓存验证。而缓存验证时往往会带上之前服务器发过来的响应头中的校验器。校验器其实就是一种同步的事件标志。分为两种，强校验器和弱校验器。
+
+  * `Etag`是一种缓存的强校验器，优先级更高。`Etag`其实就是从资源本身算出来的一个`hash`值或者版本号，客户端请求验证的时候会在请求头带上`Etag`的值，然后对应的键是`If-None-Match`。意思就是问服务器，你那边的Etag和我这个是不是不`Match`，不`Match`就把新的资源传过来
+  * `Last-Modified`响应头则是一种若校验器，表示每一次资源修改的时间，说它弱是因为精度只到一秒，而`Etag`的时间颗粒度更高，而且有的时候文件更新的而内容并不会边，这个时候`Etag`也不会更新，更加的准确，而对于有`Last-Modified`的响应头信息的缓存，验证的时候会带上`If-Modified-Since`，也很直观，意思就是问服务器自从上次修改时间是不是又改了
+
+* 当服务器处理缓存验证的请求的时候，会返回`200`ok，表示会返回更新之后的正常的结果。或者`304` `Not Modified`，而不返回内容，表示客户端可以使用缓存。`304`和`200`的响应头都可以更新缓存文件的过期时间，如果设置了`max-age`之类的响应头的话。
+
+* 总而言之，如果设置了过期时间相关的头的话，就会先计算缓存还新不新鲜，如果过期了就在进行缓存验证，如果又缓存验证相关的头的话就把这些头带上。当然，服务器可以进行的设置还是很多的。
+
+* `Vary`响应头
+
+  `Vary`响应头决定了对于后续的请求，是否要请求一个新的资源还是使用缓存的内容。比如`Vary`的键设置成了
+
+  `Content-Encoding`这回将缓存了的资源的`encoding`和请求的`encoding`进行比较看有没有，使用`Vary`头明显增强了内容服务的动态多样性。
+
+  再比如说，如果需要区分移动端和客户端的展示内容，避免再不同的终端展示错误的布局和内容呢等，就可以使用如下响应头：
+
+  ```json
+  Vary：User-Agent
+  ```
+
+  同时这可以帮助`Google`或者其他的搜索引擎更好地发现页面的移动版本。
+
   
 
