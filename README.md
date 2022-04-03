@@ -863,5 +863,397 @@
 
   同时这可以帮助`Google`或者其他的搜索引擎更好地发现页面的移动版本。
 
+
+
+#### 2022-04-03
+
+1. ##### 填充每个节点的下一个右侧节点指针
+
+   给了一个完美二叉树，填充所有的节点的next指针为下一个右侧节点，没有就默认是null；输入根节点，输出根节点。二叉树的定义如下：
+
+   ```js
+   function Node(val,left,right,next){
+       this.val = val === undefined ? 0 : val;
+       this.left = left === undefined ? null : left;
+       this.right = right === undefined ? null : right;
+       this.next = next === undefeined ? null : next;
+   }
+   ```
+
+* 法一、采用队列进行层序遍历
+
+  ```js
+  /**
+   * @param {Node} root
+   * @return {Node}
+   */
+  var connect = function (root) {
+      /* 队列，先进先出进行层序遍历 */
+      if (!root) return root;
+      const nodesQueue = [root];
   
+      while (nodesQueue.length) {
+          let size = nodesQueue.length;/* 当前层的节点数 */
+          while (size--) {
+              let cur = nodesQueue.shift();/* 获得队首 */
+              /* 填充下一个，判断是否当前层最右节点 */
+              if (size != 0) cur.next = nodesQueue[0];
+              /* 左右子节点入队 */
+              if (cur.left) nodesQueue.push(cur.left);
+              if (cur.right) nodesQueue.push(cur.right);
+          }
+      }
+  
+      return root;
+  };
+  ```
+
+* 法二，两个数组，一个保存当前层，临时数组保存下一层
+
+  ```js
+  /**
+   * @param {Node} root
+   * @return {Node}
+   */
+  var connect = function (root) {
+      if (!root) return root;
+      let curLevel = [root];/* 当前层 */
+  
+      /* 遍历当前层 */
+      while (true) {
+          let nextLevel = [];/* 下一层 */
+          let size = curLevel.length;
+          for (let i = 0; i < size; i++) {
+              /* 填充下一个 */
+              if (i < size - 1) curLevel[i].next = curLevel[i + 1];
+              if (curLevel[i].left) nextLevel.push(curLevel[i].left);
+              if (curLevel[i].right) nextLevel.push(curLevel[i].right);
+          }
+  
+          /* 还有没有下一层 */
+          if (!nextLevel.length) return root;
+          curLevel = nextLevel;/* 更新当前层 */
+      }
+  };
+  ```
+
+* 递归，深度优先，不过会带一个数组和当前节点所在深度
+
+  ```js
+  /**
+   * @param {Node} root
+   * @return {Node}
+   */
+  var connect = function (root) {
+      if (!root) return root;
+      const arr = [];/* 数组，记录每一层的一个节点，从左往右更新 */
+      depthFirst(arr, root, 0);/* 调用递归 */
+      return root;
+  
+      /* 接受一个数组，节点以及其所在深度 */
+      function depthFirst(arr, node, level) {
+          /* 判断是不是还没有遍历过这一层 */
+          if (arr.length - 1 < level) {
+              arr[level] = node;
+          } else {
+              /* 填充next指针并且更新数组 */
+              arr[level].next = node;
+              arr[level] = node;
+          }
+  
+          /* 递归调用，从左往右填 */
+          if (node.left) depthFirst(arr, node.left, level + 1);
+          if (node.right) depthFirst(arr, node.right, level + 1);
+      }
+  };
+  ```
+
+2. 对称二叉树
+
+​	输入一个根节点root，判断它的值是否轴对称
+
+* 迭代法，层序遍历，一层一层地查
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {boolean}
+   */
+  var isSymmetric = function (root) {
+      if (!root) return true;
+      /* 层序遍历 */
+      let curLevel = [root];
+  
+      while (curLevel.length) {
+          let nextLevel = [];
+          /* 首先遍历，将当前层转为值，得到下一层 */
+          for (const index in curLevel) {
+              let cur = curLevel[index];
+              if (!cur) continue;/* 保证cur不是null */
+              nextLevel.push(cur.left);
+              nextLevel.push(cur.right);
+              curLevel[index] = cur.val;
+          }
+  
+          /* 判断当前层是否对称 */
+          for (let left = 0, right = curLevel.length - 1; left < right; left++, right--) {
+              if (curLevel[left] != curLevel[right]) return false;
+          }
+  
+          curLevel = nextLevel;/* 更新 */
+      }
+  
+      return true;
+  };
+  ```
+
+* 递归，先得到层序遍历的二维数组，然后判断是否对称
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {boolean}
+   */
+  var isSymmetric = function (root) {
+      /* 递归层序遍历，得到二维数组 */
+      const resArr = [];
+      depthFirst(resArr, root, 0);
+  
+      /* 遍历二维数组的每一层 */
+      for (let index = 0; index < resArr.length - 1; index++) {
+          let curLevel = resArr[index];
+          for (let left = 0, right = curLevel.length - 1; left < right; left++, right--) {
+              if (curLevel[left] != curLevel[right]) return false;
+          }
+      }
+      return true;
+  
+      function depthFirst(arr, node, level) {
+          if (resArr.length - 1 < level) {
+              /* 如果还没有遍历到这一层，则在结果加一层 */
+              resArr[level] = [];
+          }
+          if (!node) {
+              /* 如果为null */
+              resArr[level].push(null);
+              return;
+          }
+          resArr[level].push(node.val);
+  
+          /* 递归调用 */
+          depthFirst(arr, node.left, level + 1);
+          depthFirst(arr, node.right, level + 1);
+      }
+  };
+  ```
+
+* 递归法，前序遍历，左树以中左右的顺序，右树以中右左的顺序，得到两个数组，然后再比较是不是一样的
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {boolean}
+   */
+  /* 递归左树 */
+  function leftTreeTraversal(arr, node) {
+      if (!node) {
+          arr.push(null);
+          return;
+      }
+  
+      arr.push(node.val);
+  
+      /* 不遍历叶子节点的孩子节点 */
+      if (!node.left && !node.right) {
+          return;
+      }
+  
+      /* 中左右的顺序遍历左树 */
+      leftTreeTraversal(arr, node.left);
+      leftTreeTraversal(arr, node.right);
+  }
+  
+  /* 递归右树 */
+  function rightTreeTraversal(arr, node) {
+      if (!node) {
+          arr.push(null);
+          return;
+      }
+  
+      arr.push(node.val);
+  
+      /* 不遍历叶子节点的孩子节点 */
+      if (!node.left && !node.right) {
+          return;
+      }
+      /* 中右左的顺序遍历右数 */
+      rightTreeTraversal(arr, node.right);
+      rightTreeTraversal(arr, node.left);
+  }
+  var isSymmetric = function (root) {
+      // 前序遍历对比两个子树，递归方法
+      if (!root) return true;
+      const leftTreeArray = [];
+      const rightTreeArray = [];
+  
+      leftTreeTraversal(leftTreeArray, root.left);
+      rightTreeTraversal(rightTreeArray, root.right);
+  
+      if (leftTreeArray.length != rightTreeArray.length) return false;
+  
+      /* 遍历两个数组 */
+      for (const index in leftTreeArray) {
+          if (leftTreeArray[index] != rightTreeArray[index]) return false;
+      }
+      return true;
+  };
+  ```
+
+* 递归方法，递归分别比较两边的内测和外侧
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {boolean}
+   */
+  var isSymmetric = function (root) {
+      if (!root) return true;
+      /* 递归比较左树和右树 */
+      return compareTrees(root.left, root.right);
+  };
+  
+  /* 递归方法，返回Boolean值 */
+  function compareTrees(left, right) {
+      if (!left && right) return false;   /* 如果有一方是空节点 */
+      else if (left && !right) return false;
+      else if (!left && !right) return true;  /* 如果都为空则是相同 */
+      else if (left.val != right.val) return false;/* 接下来才能比较当前节点的值 */
+  
+      /* 分别比较下一层的外侧的里侧 */
+      return compareTrees(left.left, right.right) && compareTrees(left.right, right.left);
+  }
+  ```
+
+* 使用堆栈来模拟递归，不过堆栈里的元素是要比对的二元数组
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {boolean}
+   */
+  var isSymmetric = function (root) {
+      if (!root) return true;
+      const nodesStack = [[root.left, root.right]];
+      /* 使用栈来存储未递归的部分，先外侧再内侧 */
+      while (nodesStack.length) {
+          /* 出栈 */
+          let len = nodesStack.length;
+          let left = nodesStack[len - 1][0];
+          let right = nodesStack[len - 1][1];
+          nodesStack.pop();
+  
+          /* 先比较值 */
+          if (!right && left) return false;
+          else if (right && !left) return false;
+          else if (!right && !left) continue;
+          else if (right.val != left.val) return false;
+  
+          /* 然后分别将内侧和外侧放入堆栈 */
+          nodesStack.push([left.right, right.left]);
+          nodesStack.push([left.left, right.right]);
+      }
+      return true;
+  };
+  ```
+
+
+3. ##### 前端页面性能优化
+
+   > 借鉴：
+   >
+   > - `MDN`: [`Populating the pages How browsers work`](https://developer.mozilla.org/zh-CN/docs/Web/Performance/How_browsers_work)
+   > - `掘金`: [`聊一聊前端性能优化--俊劫`](https://juejin.cn/post/6911472693405548557)
+   > - `SegmentFault：`：[`前端性能优化 24 条建议---谭光志`](https://segmentfault.com/a/1190000022205291)
+
+* 首先要善用工具，浏览器提供的各种调试工具
+
+  * `NetWork`面板：
+
+    可以看到所有资源的加载情况，评估影响页面性能的因素，面板底部还有各种信息：包括`requests`的数量，`DOMContentLoaded`即`DOM`渲染完成的时间，`Load`即当前页面所有资源加载完成的时间
+
+    同时可以判断那些资源对当前页面加载无用做出相应优化
+
+  * 瀑布流`Waterfall`
+
+    点进每个资源可以看到每个HTTP请求过程的每个步骤的具体用时，包括:
+
+    * `Queueing`：资源入队时间
+    * `Stalled`： 再队列中停止时间
+    * `DNS lookup`：DNS解析时间
+    * `Initial connection`：建立HTTP连接时间
+    * `SSL`：建立安全性连接的时间
+    * `TTFB`：等待服务器返回数据的时间
+    * `Content Download`：资源下载时间
+
+    很显然，每次`HTTP`请求的耗时都不仅仅是资源下载的时间，故而建议将多个小文件合并为一个大文件来减少`HTTP`请求次数，进而减少过多的时间耗损
+
+  * Lighthouse
+
+    根据chrome的一些策略自动对网站做一个质量评估，并且会给出一些优化的建议；
+
+    `Frist Contentful Paint` 首屏渲染时间，1s内为绿色
+
+    `Speed Index` 速度指数，4s内为绿色
+
+    `Time to Interactive` 到页面可交互的时间
+
+    `...`
+
+  - Performance
+
+    录制网页，给出相当多的数据以及分析
+
+* 减少cookie的传输
+
+  cookie的传输会造成带宽浪费，
+
+  - 故而可以一定程度上减少cookie中存储的东西
+
+  - 同时静态资源就不使用cookie了，使用其他域名时就不会自动带上cookie
+
+* 减少重排重绘
+
+  首先要了解浏览器渲染一个页面的整个过程
+
+  对于一个用户而言，良好的冲浪体验包括两个部分：`页面内容的快速加载`和`流畅的交互`；而要实验流畅的交互，开发者要确保网站从流畅的网页坤东到点击响应的交互体验。而要实现这个目标渲染时间是重中之重。
+
+  首先浏览器加载并且渲染一个页面包括以下步骤。
+
+  * 首先是`导航`，用户再地址栏输入目标`url`提交表单等
+
+  * 然后是`DNS查找`，要访问一个网站，首先要得到其服务器的IP地址，如果以前没有访问过，就需要进行`DNS`查找。再第一次初始化请求后，这个`IP地址`会被缓存一段时间，当然可能加载一个页面会需要多次`DNS查找`，因为可能`fonts`，`images`，`scripts`，`ads`都有着不同的主机名
+
+  * `TCP Handshake`，然后浏览器会通过`TCP“三次握手”`来与服务器建立连接，三次握手技术经常称为“`SYN`-`SYN`-`ACK`”，其实更准确的说是`SYN`，`SYN-ACK`，`ACK`；因为客户端和服务器需要发送三个消息才能协商完毕。而此时真正的请求还没有发出
+
+  * `TLS`协商，要再`HTTPS`上建立安全的连接，必须要进行令一番三次握手。更准确地说是TLS协商。这个过程验证了服务器，同时决定了用什么密钥来进行加密通信。保证再进行真实的数据传输之前建立安全的连接。
+
+    ![The DNS lookup, the TCP handshake, and 5 steps of the TLS handshake including clienthello, serverhello and certificate, clientkey and finished for both server and client.](README_imgs/ssl.jpg)
+
+    如上图所示，浏览器在发送真正的请求之前，一共和服务器进行了八次往返。如`MDN`上说，以下整个过程才能称之为`导航`：
+
+    `The DNS lookup, the TCP handshake, and 5 steps of the TLS handshake including clienthello, serverhello and certificate, clientkey and finished for both server and client.`
+
+  - 下一步就是响应了
+
+    建立了`web`服务器的连接后，浏览器会代表用户发出一个初始的`HTTP GET`请求，得到一个网页。
+
+  - `TCP慢开始/14kb规则`
+
+    为了避免拥塞，TCP会初始`14Kb`的响应然后逐步增加发送数据的数量，直到达到网络的最大带宽。这是为了逐渐建立一个适合网络能力的传输速度。
+
+  * `拥塞控制`
+
+    服务器通过`TCP`包发送数据时，客户端会返回`ACK`确认帧，而如果发的太快了，可能会出现丢包现象，然后就不会有确认帧。拥塞控制算法正是通过这个过程来决定合适的发送速率。
+
+
 
