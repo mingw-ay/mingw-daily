@@ -1165,6 +1165,40 @@
       return true;
   };
   ```
+  
+* 使用队列
+
+  和堆栈类似，每次入栈的都是一个要比对的节点对
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {boolean}
+   */
+  var isSymmetric = function (root) {
+      if (!root) return true;
+      let nodesQueue = [[root.left, root.right]];/* 使用队列来进行比较 */
+  
+      while (nodesQueue.length) {
+          /* 得到当前要对比的左右 */
+          let left = nodesQueue[0][0];
+          let right = nodesQueue[0][1];
+          nodesQueue.shift();
+  
+          if (!left && !right) continue;/* 如果都为空 */
+          else if (!left || !right) return false;/* 如果某一个为空 */
+          else if (left.val != right.val) return false; /* 如果当前节点值就不相同 */
+  
+          /* 然后再将外侧，内测要对比的放进去 */
+          nodesQueue.push([left.left, right.right]);
+          nodesQueue.push([left.right, right.left]);
+      }
+  
+      return true;
+  };
+  ```
+
+
 
 
 3. ##### 前端页面性能优化
@@ -1260,4 +1294,327 @@
     - 第一步是处理HTML标签并且构造`DOM`树。`HTML`的解析设计到`tokenization`以及树的构造。`DOM`树称为文档对象模型，描述了文档的内容。尽可能少一点节点，尽管几个额外的节点并不会导致什么区别，但是`“DIV癖”(divitis)`可能会有点问题。在解析HTML文件转化成`DOM树`的过程中，浏览器每次发现外部资源就会进行请求，有的时候请求会阻塞HTML解析的过程。而对于CSS文件，解析会继续，但是一旦遇到`<script>`标签，就会阻塞渲染和HTML解析的过程，故而倾向于将其放到末尾，或者如果顺序不重要的话添加`async`或者`defer`属性。
     - 第二步是处理`CSS`并且构建`CSSOM`树。`CSS`对象模型和`DOM`是类似的，但是DOM可以是增量的，`CSSOM`却不是，它会阻塞渲染，因为CSS的规则是会互相覆盖的。比如后续规则可能被之前的覆盖。当然一般构建`CSSOM`非常非常快。所以尽管太多太具体的选择器会有一定的弊端，然后为了可读性未必值得优化
     - 第三步是将`DOM`和`CSSOM树`组合为渲染树。浏览器会从根节点开始检查每个节点，并且决定要添加那些`CSS`规则。渲染树只包含可见内容，`<head>`和他的子节点，具有`display:none`样式的节点以及他的子节点都不会出现在渲染树上，但是具有`visibility：hidden`的节点是会的，因为其会占用空间，这也是为什么这个属性并不能避免重排，只能避免重绘
+   
+      这一步给每个可见节点都应用了其`CSSOM`规则。渲染树保存了所有具有内容和计算样式的可见节点。更具`CSS`级联约定了每个节点的计算样式
+    
+    - 第四步是`Layout`---布局，在渲染树被构建完成过后，就能在其基础上计算每个节点的几何体。布局从否意义上取决于屏幕的尺寸。布局这个步骤决定了对各节点的宽高和位置，以及他们的相关性。而`回流Reflow`则是对页面的局部或者整个文档进行重新确定大小和位置。
+    
+      布局的过程中从渲染树的根节点开始遍历。布局要更具视窗的大小为基础，然后从`body`开始计算，确定`body`的所有子孙节点的尺寸，然后对于向不知道具体尺寸的元素，例如`图片`，提供占位符空间。
+    
+      视窗的源标签定义了布局`视窗`的宽度，从而影响布局。如果没有，则使用视窗的默认宽度。默认全屏浏览器通常是`960px`，而手机浏览器要想默认为设备的宽度可以设置为：`<meta name="viewport" content="width=device-width">`.
+    
+      布局的性能收到`DOM`影响， 节点数越多，布局时间越长，而在添加节点，改变内容或者在一个节点更新和模型样式的时候都会发生布局，而在布局期间如果需要滚共或者动画的时候就会被布局阻碍导致`20ms`的延迟，即`停滞`。
+    
+      为了减小布局时间的频率和时长，应该批量更新或者避免改动盒模型的属性。
+    
+      关于`Layout`和`Reflow`，第一次确定节点大小和位置称之为布局/`Layout`，而随后对节点大小和位置的重新结算就称之为回流/`Reflow`。
+    
+      举例： 假设初始布局在真正的图像资源被返回之前，那如果没有首先声明图片的大小，一旦真正要渲染图片，就会导致`回流`。
+    
+    - 最后一步是`Paint`---绘制。即将像素或者说各个节点绘制在屏幕上。`绘制`也称为`光栅化`，在这个阶段，浏览器会将在布局阶段计算的每个框以及它的各种各样你的细节转化成屏幕上了每个实际像素。在在第一次绘制之后，当有节点的样式有更改，就有可能会发生重绘，而浏览器在这方面做出了很大的优化——浏览器只会重绘需要绘制的最小区域。因此绘制往往是一个非常快的过程，在这方面的性能提高可能不是最有效的，往往移出一个小的样式增加，只能带来0.001ms的优化。故而可能应该更多的聚焦到排列或者说回流上去。在进行web页面优化时最重要的应该是测量出精准的数据，才能更明确那一步的优先级更高。
+    
+      现在的设备如iPad有超过324.5万像素需要绘制，而为了确保`重绘`比`初始绘制`的速度更快，会将布局数上的元素分成多层。将内容提高到`GPU`上的层而不是`CPU`上的主线程。这可以提高绘制以及重新绘制的性能。标签包括`<video>`和`<canvas>`,带有`CSS`属性包括：`opacity`、`CSS3`的转换`transitions`，`3D变换(transform)`的元素等等，这些节点以及子节点会被一起会知道他们自己的层上。而如果像这样绘图被分成了多个层，就需要进行合成(`Compositing`)，保证一正确的顺序绘制到屏幕上。
+    
+      分层的确能够提高性能，但它是以内存管理为代价的，因此并不应该作为web性能优化策略的一部分过度使用.
+    
+      总而言之，在某些情况下，可以将内容提升到自己的层进行合成，通过在`GPU`而不是`CPU`上绘制屏幕的一部分来提高性能，从而释放主线程.
 
+#### 2022/04/04
+
+1. ##### 二叉树的最大深度
+
+   给定一个二叉树，返回最大深度，即到根节点最远的叶子节点的路径上的节点数（包括首尾）
+
+* 直接迭代，采用两个数组指针，一个curLevel是当前层，遍历当前层得到下一层，过程中得到最大深度
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number}
+   */
+  var maxDepth = function (root) {
+      if (!root) return 0;
+      let curLevel = [root];
+      let maxDepth = 0;
+  
+      while (true) {
+          let nextLevel = [];
+          /* 遍历当前层 */
+          for (const node of curLevel) {
+              if (node.left) nextLevel.push(node.left);
+              if (node.right) nextLevel.push(node.right);
+          }
+          maxDepth++;/* 深度加一 */
+          if (!nextLevel.length) return maxDepth;/* 如果下一层没了 */
+          curLevel = nextLevel;
+      }
+  };
+  ```
+
+* 递归法一，前序遍历，每次都传一个当前最大深度进去
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number}
+   */
+  var maxDepth = function (root) {
+      if (!root) return 0;
+      /* 递归，前序遍历，每次将最大深度和当前深度传给递归函数 */
+      let maxDepth = 0;
+      return preOrderTraversal(maxDepth, root, 1);
+  
+      function preOrderTraversal(maxDepth, node, level) {
+          /* 如果还没有遍历过这一层 */
+          if (maxDepth < level)
+              maxDepth = level;
+  
+          let leftMaxDepth = node.left ? preOrderTraversal(maxDepth, node.left, level + 1) : maxDepth;
+          let rightMaxDepth = node.right ? preOrderTraversal(maxDepth, node.right, level + 1) : maxDepth;
+          return Math.max(leftMaxDepth, rightMaxDepth);
+      }
+  };
+  ```
+
+* 递归法二，传一个数组指针进去，最终返回数组的大小
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number}
+   */
+  var maxDepth = function (root) {
+      if (!root) return 0;
+      /* 递归，前序遍历，用一个数组来记录深度 */
+      const resArr = [];
+      preOrderTra(resArr, root, 0);
+      return resArr.length;
+  
+      function preOrderTra(arr, node, level) {
+          /* 如果还没有遍历过这一层 */
+          if (arr.length - 1 < level)
+              arr[level] = level;
+  
+          if (node.left) preOrderTra(arr, node.left, level + 1);
+          if (node.right) preOrderTra(arr, node.right, level + 1);
+      }
+  };
+  ```
+
+* 递归方法三，后序遍历递归，从叶子节点开始网上得到根结点的高度
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number}
+   */
+  var maxDepth = function (root) {
+      /* 后续遍历，从叶子节点开始递归加一得到根节点的高度 */
+      return getDepth(root);
+  
+      function getDepth(node) {
+          if (!node) return 0;/* 如果是空，高度为0 */
+  
+          let leftDepth = getDepth(node.left);/* 得到子节点高度 */
+          let rightDepth = getDepth(node.right);/* 得到右子节点高度 */
+  
+          return 1 + Math.max(leftDepth, rightDepth);/* 加上当前节点 */
+      }
+  };
+  ```
+
+  精简一下：
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number}
+   */
+  var maxDepth = function (root) {
+      if (!root) return 0;/* 如果根节点为空，高度为0 */
+  
+      /* 递归得到左右子节点的高度较大者 */
+      /* 加一是算上当前根节点的高度 */
+      return Math.max(maxDepth(root.left), maxDepth(root.right)) + 1;
+  };
+  ```
+
+2. ##### 二叉树的最小深度
+
+* 与上面恰好相反，要找的是离根节点最近的叶子节点的距离
+
+  使用队列来进行层序遍历，一旦遇到叶子节点就返回所在深度
+
+  ```js
+   */
+  /**
+   * @param {TreeNode} root
+   * @return {number}
+   */
+  var minDepth = function (root) {
+      /* 层序遍历，一旦遇到叶子节点就返回当前深度 */
+      if (!root) return 0;
+      const nodeQueue = [root];
+      let minDepth = 0;
+  
+      while (nodeQueue.length) {
+          let size = nodeQueue.length;/* 得到当前层节点数 */
+          minDepth++;/* 深度加一 */
+          while (size--) {
+              let cur = nodeQueue.shift();
+              if (!cur.left && !cur.right) return minDepth;/* 如果遇到了叶子节点 */
+              if (cur.left) nodeQueue.push(cur.left);
+              if (cur.right) nodeQueue.push(cur.right);
+          }
+      }
+  };
+  ```
+
+* 递归法，后序遍历，只有当遇到了叶子节点才算是边界条件返回1
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number}
+   */
+  var minDepth = function (root) {
+      if (!root) return 0;
+      /* 后序遍历，从叶子节点往上计算高度，并且比较得到比较小的那个 */
+      return getMinDepth(root);
+  
+      function getMinDepth(node) {
+          /* 如果node为叶子节点，返回1 */
+          if (!node.left && !node.right) return 1;
+          /* 如果两边都还有，那就返回比较小的那个高度，然后加1 */
+          else if (node.left && node.right) return Math.min(getMinDepth(node.left), getMinDepth(node.right)) + 1;
+          /* 如果还有一遍有，就不是叶子节点，还要往下找 */
+          else if (node.left) return getMinDepth(node.left) + 1;
+          else if (node.right) return getMinDepth(node.right) + 1;
+      }
+  };
+  ```
+
+  精简一下：
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number}
+   */
+  var minDepth = function (root) {
+      /* 如果根节点为空，高度为0 */
+      if (!root) return 0;
+  
+      /* 如果不是叶子节点，但一方为空 */
+      if (!root.left && root.right)
+          return minDepth(root.right) + 1;
+      else if (!root.right && root.left)
+          return minDepth(root.left) + 1;
+      /* 否则就是叶子节点或者两方都不为空 */
+      else return Math.min(minDepth(root.left), minDepth(root.right)) + 1;
+  };
+  ```
+
+* 递归，前序遍历，维护一个minDepth变量，然后传level进去，遇到了叶子节点才更新，前序遍历反而更好理解一点
+
+  ```js
+  var minDepth = function (root) {
+      if (!root) return 0;
+      this.minDepth = Infinity;/* 先初始化为最大 */
+      getMinDepth(root, 1);
+      return this.minDepth;
+  
+      function getMinDepth(node, level) {
+          /* 如果遇到了叶子节点就更新 */
+          if (!node.left && !node.right && level < this.minDepth)
+              this.minDepth = level;
+  
+          /* 递归调用 */
+          if (node.left) getMinDepth(node.left, level + 1);
+          if (node.right) getMinDepth(node.right, level + 1);
+      }
+  };
+  ```
+
+2. ##### N叉树的最大深度
+
+   给定一个N叉树，找到最大深度
+
+   其构造方法如下：
+
+   ```js
+   function Node(val,children){
+       this.val = val === undefined ? 0 : val;
+       this.children = children === undefined ? [] : children;
+   }
+   ```
+
+* 采用后序遍历，从叶子节点开始往上数根节点的高度
+
+  ```js
+  /**
+   * @param {Node|null} root
+   * @return {number}
+   */
+  var maxDepth = function (root) {
+      /* 采用后序遍历，从叶子节点开始往上数根节点的高度 */
+      if (!root) return 0;
+  
+      let maxLevel = 0;/* 初始化子节点最大深度 */
+      /* 递归孩子节点，比出他们的最大值 */
+      for (const child of root.children) {
+          maxLevel = Math.max(maxLevel, maxDepth(child));
+      }
+  
+      return maxLevel + 1;
+  };
+  ```
+
+  精简一下如下，map方法可能比较耗时间：
+
+  ```js
+  /**
+   * @param {Node|null} root
+   * @return {number}
+   */
+  var maxDepth = function (root) {
+      /* 采用后序遍历，从叶子节点开始往上数根节点的高度 */
+      if (!root) return 0;
+  
+      if (!root.children.length) return 1;/* 如果没有孩子 */
+      return Math.max(...root.children.map(child => maxDepth(child))) + 1;
+  };
+  ```
+
+* 还是层序遍历方便，虽然shift方法可能有点慢
+
+  ```js
+  /**
+   * @param {Node|null} root
+   * @return {number}
+   */
+  var maxDepth = function (root) {
+      if (!root) return false;
+      /* 采用层序遍历 */
+      let nodeQueue = [root];
+      let maxDepth = 0;
+  
+      while (nodeQueue.length) {
+          let size = nodeQueue.length;
+          maxDepth++;
+          while (size--) {
+              let cur = nodeQueue.shift();
+              /* 遍历孩子 */
+              if (cur.children) {
+                  for (const child of cur.children) {
+                      nodeQueue.push(child);
+                  }
+              }
+          }
+      }
+  
+      return maxDepth;
+  };
+  ```
+
+  
