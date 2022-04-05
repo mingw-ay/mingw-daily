@@ -1866,4 +1866,130 @@
   };
   ```
 
+
+  * 要减少重排重绘，首先要了解哪些动作会导致它的发生。经过上面的讨论，明显减少重排是性能优化非常重要的一环。
+  
+  * 以下动作会导致重排：
+  
+    - 添加/删除可见的`DOM`元素
+  
+    - 改变元素位置
+  
+    - 改变元素尺寸：通过更改`margin`、`padding`、`border`、`width`、`height`等属性
+  
+    - 改变元素内容
+  
+    - 改变元素字体大小
+  
+    - 改变浏览器窗口尺寸，用户手动更改或者发生`resize`时间等
+  
+    - 激活了`CSS`伪类，然后里面有些涉及尺寸的属性
+  
+    - 增添伪元素当然也算
+  
+    - 设置`style`属性的值，如果通过`style`改变节点样式，每设置一次都会触发一次回流
+  
+    - 读取元素某些属性或者调用某些计算方法，如`offsetWidth`，`offsetHeight`等，方法包括`getComputedStyle`或者`IE`浏览器中的`currentStyle`。
+  
+      为什么读取一个元素也会触发重排呢，因为浏览器的`渲染队列机制`，每次修改DOM样式的代码并不会立即执行，而在读取属性的时候，为了保证`即时性`和`准确性`会立即触发重排。而这也正是之后建议`读写分离`的原因
+  
+  * 同时重排影响的范围
+  
+    由于浏览器渲染界面是基于流式布局模型的，所以某个元素的样式更改可能会导致周围`DOM`也得重新排列。影响的范围有两种
+  
+    * 全局，从根节点`body`开始整个渲染树的布局都得重新计算
+    * 局部，只需要对渲染树的某个部分进行重新布局
+  
+  * 很显然，全局范围的重排是由于元素之间的嵌套，而所有元素都是在`body`标签中的
+  
+  * 而局部布局则是将一个DOM节点的宽高以及位置之类的属性写死了，脱离的整体文件流，故而对该`DOM元素`或者其内部元素的更改指挥在其内部触发重排
+  
+  * 而重绘：则是所有对元素的视觉表现属性如颜色`visibility`等的修改，就会导致`重绘`。
+  
+    
+  
+  4. 减少重排的办法
+  
+     > 重排的代价昂贵，影响页面性能，在严重时会让UI展示变得非常缓慢，阻塞用户的交互行为。而要减少重排的负面影响主要可以从两方面下手：减少重排的次数，减少从拍的范围
+  
+  * 减少重排范围
+  
+    * 使用`absolute`，`fixed`等让`DOM元素`脱离文档流，不会对其他节点造成太多影响，同时当要增加一个绝对定位的元素时，其他节点的像素绘制可能会有变化，但是不会导致重排
+  
+    * 对于某些宽高不定的元素最好提前设置其所在块级元素的宽高，尤其时图片，在渲染前必须指定其大小，因为第一次排列实在图片加载之前发生的，如果不设置宽高，加载出来图片后很可能导致整个页面重排
+  
+    * 尽量不适用`table`进行布局，因为对table的任何一个小部分的改动都会造成整个`table`的重新布局。同时如果需要隐藏某行某列可以设置`visibility:collapse`, 这个值可以从表中快速删除行或者列，而不强制重新计算整个表的宽度或者高度。
+  
+      如果不得已使用`table`的话，可以通过设置`table-layout:auto;`或者`table-layout：fixed;`来让`table`一行一行的渲染，限制重排的影响范围。同时设置`fixed`属性后可以通过指定width来限制表格的宽度，而`text-overflow`属性用于文字过长时显示省略号。
+  
+  * 减少重排的次数
+  
+    * css属性读写分离
+  
+      通过上面的讨论直到，如果读和写交叉出现，基本上每次进行读操作都会强制执行前面的写操作导致重新渲染（重排重绘）。如下面例子所示
+  
+      ```js
+      // bad 每次读取会强制刷新，一共触发四次重排重绘
+      div.style.top = div.offsetTop + 1 + 'px';
+      div.style.right = div.offsetRight + 1 + 'px';
+      div.style.bottom = div.offsetBottom + 1 + 'px';
+      div.style.left = div.offsetLeft + 1 + 'px';
+      
+      // 读写分离，好一点，缓存布局信息，只会触发一次重排+重绘。因为只读的时候不会倒是重排
+      let curTop = div.offsetTop;
+      let curRight = div.offsetRight;
+      let curBottom = div.offsetBottom;
+      let curLeft = div.offsetLeft;
+      
+      // 集中写，触发Flush渲染队列，只触发一次渲染
+      div.style.top = curTop + 1 + 'px';
+      div.style.right = curRight + 1 + 'px';
+      div.style.bottom = curBottom + 1 + 'px';
+      div.style.left = curLeft + 1 + 'px';
+      ```
+  
+      关于渲染队列机制：
+  
+      > 在代码从上往下执行的时候，把所有要修改`DOM`样式的代码都放入队列中，然后一次性同一渲染，从而只触发一次回流和重绘。利用该运行机制可以进行读写分离，来控制浏览器的渲染次数
+  
+    * 集中更改样式
+  
+      为了避免频繁地操作样式，对于一个静态页面而言，更明智并且可维护地做法是切换或者增加`class`。而倘若要通过`style`属性来批量的操作元素样式地话，更好地方法时通过字符串模板统一在`style.cssText`变量进行编辑，虽然现在大部分现代浏览器都支持`Flush`队列进行渲染队列优化，但是有些老版本地浏览器如`IE6`依然效率低下。如下
+  
+      ```js
+      // 可能不太好
+      let top = 10;
+      let left = 10;
+      el.style.top = top + "px";
+      el.style.left = left + "px";
+      
+      // 批量操作style可以通过cssText
+      el.style.cssText += `;left: ${left}; top: ${top};`;
+      
+      // 比较好的方法是操作classList，
+      // Element.classList是一个只读属性
+      // 返回一个实时的DOMTokenList集合
+      // 标识某个DOM元素的类属性
+      // 提供了许多有用的函数
+      const div = document.createElement("div");
+      div.className = "foo";
+      
+      console.log(div.outerHTML); // <div class="foo"></div>
+      
+      let classes = div.classList;
+      console.log(classes.contains("foo")); // true
+      
+      // 使用classList API移出、添加类，可以带多个参数，会自动去重
+      div.classList.remove("foo");
+      div.classList.add("anotherclass");
+      
+      // toggle,如果已经存在则移出，否则添加
+      div.classList.toggle("visible");
+      
+      // 添加或者删除，取决于第二个参数，Boolean值，true则add，否则就相当于remove
+      let i = 4;
+      div.classList.toggle("visible", i < 10); // 强制add，不管有没有，返回true
+      ```
+  
+
   
