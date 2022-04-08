@@ -2319,3 +2319,988 @@
 ​           而`HTTP/2`对多路复用的性能优化正是基于二进制的帧-消息传输机制。它允许客户端和服务器之间仅仅建立一个TCP连接，而同步发起多个请求-响应消息，即多个`流(Stream)`，而同一个流被分成了多个帧，这些帧可以交错发送，反正对应同一个流的帧都会带上对应的流编号，并且可以分优先级，最后再另一端再将他们重新组合起来。
 
 ​           同时`HTTP/2`的`TCP`连接是持久化的，一个用户只需要和服务器建立一个连接，然后承载数十乃至数百个流的复用。
+
+#### 2022/04/07
+
+1. ##### 左叶子之和
+
+   输入一个二叉树的根结点root，返回所有左叶子值的和
+
+   所谓左叶子，有两个要求：是左边子节点，是叶子节点
+
+* 方法一，从上往下递归遍历，维护一个全局变量sum
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number}
+   */
+  var sumOfLeftLeaves = function (root) {
+      if (!root) return 0;
+      this.sum = 0;
+      getSum(root, false);
+      return this.sum;
+  
+      function getSum(node, isLeftNode) {
+          /* 求和，传入节点，以及是否左节点 */
+          if (isLeftNode && !node.left && !node.right) {
+              this.sum += node.val;
+              return;
+          }
+  
+          /* 往下继续找 */
+          if (node.left) getSum(node.left, true);
+          if (node.right) getSum(node.right, false);
+      }
+  };
+  ```
+
+* 方法二，从下往上数，如果不是左叶子，就往下调用返回左右子树的结果之和
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number}
+   */
+  var sumOfLeftLeaves = function (root) {
+      /* 递归方法，从下往上数 */
+      function getSum(node, isLeftNode) {
+          if (!node) return 0;
+          /* 如果是左叶子节点 */
+          if (isLeftNode && !node.left && !node.right)
+              return node.val;
+  
+          /* 否则返回左右树的左叶子之和的和 */
+          return getSum(node.left, true) + getSum(node.right, false);
+      }
+  
+      return getSum(root, false);
+  };
+  ```
+
+* 方法三，堆栈模拟递归，每个节点都带上是否左节点的标识
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number}
+   */
+  var sumOfLeftLeaves = function (root) {
+      if (!root) return 0;
+      const nodeStack = [[root, false]];/* 使用堆栈模拟递归,二元组，分别存当前节点以及是否左节点 */
+      let sum = 0;
+  
+      while (nodeStack.length) {
+          let cur = nodeStack.pop();
+          let node = cur[0];
+          let isLeftNode = cur[1];
+  
+          if (isLeftNode && !node.left && !node.right) {
+              sum += node.val;/* 如果是左叶子 */
+              continue;
+          }
+          if (node.right) nodeStack.push([node.right, false]);
+          if (node.left) nodeStack.push([node.left, true]);
+      }
+  
+      return sum;
+  };
+  ```
+
+* 也可以不携带另一个参数，直接对每个当前节点的左节点进行判断，以下以`后序遍历`为例
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number}
+   */
+  var sumOfLeftLeaves = function (root) {
+      return getSum(root);
+  
+      function getSum(node) {
+          if (!node) return 0;
+          /* 如果左节点是叶子节点 */
+          if (node.left && !node.left.left && !node.left.right)
+              return node.left.val + getSum(node.right);
+          /* 否则递归往下 */
+          return getSum(node.left) + getSum(node.right);
+      }
+  };
+  ```
+
+* 同样堆栈迭代法也能简洁一点
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number}
+   */
+  var sumOfLeftLeaves = function (root) {
+      if (!root) return 0;
+      /* 堆栈模拟，每次判断当前节点的左节点是不是叶子 */
+      const nodeStack = [root];
+      let sum = 0;
+  
+      while (nodeStack.length) {
+          let cur = nodeStack.pop();
+          if (cur.left && !cur.left.left && !cur.left.right)
+              sum += cur.left.val;
+          if (cur.right) nodeStack.push(cur.right);
+          if (cur.left) nodeStack.push(cur.left);
+      }
+      return sum;
+  };
+  ```
+
+2. ##### 找树左下角的值
+
+   给定一个二叉树的根结点root，且root不为空，返回该二叉树最底层最左边节点的值。
+
+* 很明显可以用层序遍历，只要每次都存一下最左边的节点值即可
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number}
+   */
+  var findBottomLeftValue = function (root) {
+      /* 层序遍历，采用队列模拟 */
+      const nodeQueue = [root];
+      let leftVal;
+  
+      while (nodeQueue.length) {
+          /* 得到当前层长度y以及最左边节点 */
+          let size = nodeQueue.length;
+          leftVal = nodeQueue[0].val;
+  
+          while (size--) {
+              let cur = nodeQueue.shift();
+              if (cur.left) nodeQueue.push(cur.left);
+              if (cur.right) nodeQueue.push(cur.right);
+          }
+      }
+      return leftVal;
+  };
+  ```
+
+* 两个数组进行层序遍历也挺方便
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number}
+   */
+  var findBottomLeftValue = function (root) {
+      /* 层序遍历，两个数组，一个存当前层一个下一层 */
+      let curLevel = [root];
+  
+      while (true) {
+          /* 遍历当前层 */
+          let nextLevel = [];
+          for (const node of curLevel) {
+              if (node.left) nextLevel.push(node.left);
+              if (node.right) nextLevel.push(node.right);
+          }
+          /* 如果没有下一层了,返回当前层最左值 */
+          if (!nextLevel.length) return curLevel[0].val;
+          curLevel = nextLevel;
+      }
+  };
+  ```
+
+* 也可以使用递归，深度优先
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number}
+   */
+  var findBottomLeftValue = function (root) {
+      /* 深度优先遍历，先遍历左节点 */
+      /* 传入当前结果，即所在层数以及对应最左值,一个二元组 */
+      const valueWithDepth = [root.val, 1];
+      findValue(valueWithDepth, root, 1);
+      return valueWithDepth[0];
+  
+      function findValue(valueWithDepth, node, curDepth) {
+          /* 如果还可以更深并且是叶子节点，更新 */
+          if (!node.left && !node.right && curDepth > valueWithDepth[1]) {
+              valueWithDepth[0] = node.val;
+              valueWithDepth[1] = curDepth;
+              return;
+          }
+  
+          /* 先左后右递归，这里其实隐藏了回溯 */
+          if (node.left) findValue(valueWithDepth, node.left, curDepth + 1);
+          if (node.right) findValue(valueWithDepth, node.right, curDepth + 1);
+      }
+  };
+  ```
+
+  `关于是不是要返回值`
+
+  > 如果是要找到某种具体的路径，那就需要，如果是一定要遍历整棵树，那就不用？
+  >
+  > 比如之前在从下到上去找到最大深度的时候，或者是求整个树的结点树的时候，是有返回值的，这是因为这种可以去按照某种公式算出来
+  >
+  > 而像是从上往下按照深度优先地去遍历，然后再记录最大深度或者是整个前序遍历的结果之类的就没办法直接返回结果。
+
+3. ##### 路径总和
+
+​		输入一个根结点`root`以及目标路径总和`targetSum`，返回在从根结点到叶子节点的路径中，有没有等于`targetSum`的路径的存在。`PS`：如果树为空就返回`false`，因为没有路径可言
+
+* 既然是找路径，那就必须是深度优先搜索以及回溯，并且维护一个全局的Boolean值
+
+  这里的递归函数没有返回值
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {number} targetSum
+   * @return {boolean}
+   */
+  var hasPathSum = function (root, targetSum) {
+      if (!root) return false;
+      let hasTargetSum = false;/* 初始化返回值 */
+      getPathSum(root, root.val);
+      return hasTargetSum;
+  
+      /* 递归，从上往下,传入当前结点以及目前路径的和 */
+      function getPathSum(node, sum) {
+          /* 是叶子结点，且找到了 */
+          if (!node.left && !node.right && sum == targetSum) {
+              hasTargetSum = true;
+              return;
+          }
+  
+          // 从左往右找路径,保证还没有找到
+          if (!hasTargetSum && node.left) getPathSum(node.left, sum + node.left.val);
+          if (!hasTargetSum && node.right) getPathSum(node.right, sum + node.right.val);
+      }
+  };
+  ```
+
+* 也能直接调用递归，返回一个值，此时只需要分别调用左右树然后返回一个||
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {number} targetSum
+   * @return {boolean}
+   */
+  var hasPathSum = function (root, targetSum) {
+      /* 有返回值的写法,返回一个Boolean值 */
+      function getPathSum(node, curSum) {
+          /* 如果节点为空 */
+          if (!node) return false;
+  
+          /* 获得当前结点的sum */
+          curSum += node.val;
+  
+          /* 如果当前结点是叶子结点 */
+          if (!node.left && !node.right) {
+              if (curSum == targetSum)
+                  return true;
+              else return false;
+          }
+  
+          /* 递归 */
+          return getPathSum(node.left, curSum) || getPathSum(node.right, curSum);
+      }
+  
+      return getPathSum(root, 0);
+  };
+  ```
+
+* 使用堆栈模拟，递归回溯的过程
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {number} targetSum
+   * @return {boolean}
+   */
+  var hasPathSum = function (root, targetSum) {
+      if (!root) return false;
+      const nodeStack = [[root, root.val]];/* 使用堆栈模拟递归 */
+  
+      /* 模拟深度遍历，每个结点带上当前路径的和 */
+      while (nodeStack.length) {
+          let cur = nodeStack.pop();
+          let curNode = cur[0];
+          let curSum = cur[1];
+  
+          /* 如果遇到了叶子节点 */
+          if (!curNode.left && !curNode.right) {
+              /* 如果满足条件 */
+              if (curSum == targetSum) return true;
+              continue;
+          }
+  
+          /* 先右后左入栈 */
+          if (curNode.right) nodeStack.push([curNode.right, curSum + curNode.right.val]);
+          if (curNode.left) nodeStack.push([curNode.left, curSum + curNode.left.val]);
+      }
+  
+      return false;
+  };
+  ```
+
+* 就用一个`sum`全局变量来回溯看起来还是更简介，就是要压入标志来回溯有点奇怪
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {number} targetSum
+   * @return {boolean}
+   */
+  var hasPathSum = function (root, targetSum) {
+      if (!root) return false;
+      const nodeStack = [root];/* 堆栈模拟递归的过程 */
+      let sum = 0;
+  
+      while (nodeStack.length) {
+          let cur = nodeStack.pop();
+          if (cur) {
+              /* 首先将当前结点数值压制，之后回溯 */
+              nodeStack.push(cur.val);
+              nodeStack.push(null);
+  
+              sum += cur.val;/* 更新路径和 */
+              if (!cur.left && !cur.right) {/* 遇到了叶子节点 */
+                  if (sum == targetSum) return true;
+                  continue;/* 继续循环 */
+              }
+              /* 先压入右树然后左树 */
+              if (cur.right) nodeStack.push(cur.right);
+              if (cur.left) nodeStack.push(cur.left);
+          } else sum -= nodeStack.pop();/* 如果遇到回溯标识null则回溯 */
+      }
+  
+      return false;
+  };
+  ```
+
+#### 2022/04/08
+
+1. ##### 路径总和Ⅱ
+
+   之前找过所有的路径，然后又判断过有没有和为`targetSum`的路径，本题需要返回的是路径和为`targetSum`的所有路径
+
+* 首选方案当前是深度优先搜索加上回溯
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {number} targetSum
+   * @return {number[][]}
+   */
+  var pathSum = function (root, targetSum) {
+      if (!root) return [];
+      const resArr = [];
+      const path = [];
+      getPath(root, 0);
+      return resArr;
+  
+      function getPath(node, curSum) {
+          /* 更新curSum */
+          curSum += node.val;
+          /* 更新path */
+          path.push(node.val);
+          /* 判断当前是否叶子节点 */
+          if (!node.left && !node.right) {
+              if (curSum == targetSum)
+                  resArr.push([...path]);/* 克隆一下path再push进结果 */
+              return;
+          }
+  
+          /* 深度优先遍历，先push左，然后右 */
+          if (node.left) {
+              getPath(node.left, curSum);
+              path.pop();/* 回溯 */
+          }
+          if (node.right) {
+              getPath(node.right, curSum);
+              path.pop();/* 回溯 */
+          }
+      }
+  };
+  ```
+
+* 当然也可以通过堆栈模拟递归以及回溯的过程
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {number} targetSum
+   * @return {number[][]}
+   */
+  var pathSum = function (root, targetSum) {
+      if (!root) return [];
+      /* 堆栈模拟搜索过程 */
+      const nodeStack = [root];
+      let sum = 0;
+      const path = [];
+      const resArr = [];
+  
+      /* 通过push一个null标志来进行回溯 */
+      while (nodeStack.length) {
+          let cur = nodeStack.pop();
+          if (cur) {
+              /* push一个null标志 */
+              nodeStack.push(null);
+              /* 更新sum和path */
+              sum += cur.val;
+              path.push(cur.val);
+              /* 判断 */
+              if (!cur.left && !cur.right) {
+                  if (sum == targetSum)
+                      resArr.push([...path]);
+                  continue;
+              }
+  
+              /* 先右后左入栈 */
+              if (cur.right) nodeStack.push(cur.right);
+              if (cur.left) nodeStack.push(cur.left);
+          } else {
+              /* 回溯 */
+              sum -= path.pop();
+          }
+      }
+  
+      return resArr;
+  };
+  ```
+
+2. ##### 从中序与后续遍历序列构造二叉树
+
+   给定中序与后序遍历的数组：`inorder`和`postorder`，构造对应二叉树，返回`root`结点
+
+* 递归法，从下往上构造，先构建左树，右树，然后再构建当前树
+
+  ```js
+  /**
+   * @param {number[]} inorder
+   * @param {number[]} postorder
+   * @return {TreeNode}
+   */
+  var buildTree = function (inorder, postorder) {
+      /* 从下往上递归 */
+      let midValue = postorder.pop();/* 中间结点的值 */
+      let midIndex = inorder.indexOf(midValue);/* 找到中间结点所在位置 */
+  
+      /* 构建左右树 */
+      let len = inorder.length;
+      let leftTree = null;
+      let rightTree = null;
+      if (midIndex) {
+          leftTree = buildTree(inorder.slice(0, midIndex), postorder.slice(0, midIndex));
+      }
+      if (len - 1 - midIndex)
+          rightTree = buildTree(inorder.slice(midIndex + 1), postorder.slice(midIndex));
+      /* 返回当前树 */
+      return new TreeNode(midValue, leftTree, rightTree);
+  };
+  ```
+
+  优化一下，不用slice，自己得到左右树的中序后序数组
+
+  ```js
+  /**
+   * @param {number[]} inorder
+   * @param {number[]} postorder
+   * @return {TreeNode}
+   */
+  var buildTree = function (inorder, postorder) {
+      let midValue = postorder.pop();
+  
+      /* 首先得到右树的中序遍历和后续遍历，不过后面得倒转一遍 */
+      let rightInorder = [];
+      let rightPostorder = [];
+      while ((cur = inorder.pop()) != midValue) {
+          rightInorder.push(cur);
+          rightPostorder.push(postorder.pop());
+      }
+  
+      /* 分别构建左右树 */
+      let leftTree = inorder.length ? buildTree(inorder, postorder) : null;
+      let rightTree = rightInorder.length ? buildTree(rightInorder.reverse(), rightPostorder.reverse()) : null;
+      return new TreeNode(midValue, leftTree, rightTree);
+  };
+  ```
+
+* 可能可以更简单，直接传入一个数组以及开始终止位置，一直保证区间左闭右开即可
+
+  ```js
+  /**
+   * @param {number[]} inorder
+   * @param {number[]} postorder
+   * @return {TreeNode}
+   */
+  var buildTree = function (inorder, postorder) {
+      /* 调用递归方法，传入当前起始值 */
+      return traversal(inorder, 0, inorder.length, postorder, 0, inorder.length);
+  
+      /* 递归方法，接收两个数组，以及分别的起终点位置,保证左闭右开 */
+      function traversal(inorder, inFrom, inTo, postorder, postFrom, postTo) {
+          /* 首先拿到中间结点 */
+          let midValue = postorder[postTo - 1];
+          let midIndex;
+          /* 找到在前序的中间节点的位置 */
+          for (let i = inFrom; i < inTo; i++) {
+              if (inorder[i] == midValue) {
+                  midIndex = i;
+                  break;
+              }
+          }
+          /* 构建当前结点的左子树和右子树 */
+          let leftTree = midIndex == inFrom ? null : traversal(inorder, inFrom, midIndex, postorder, postFrom, postFrom + midIndex - inFrom);
+          let rightTree = midIndex + 1 == inTo ? null : traversal(inorder, midIndex + 1, inTo, postorder, postFrom + midIndex - inFrom, postTo - 1);
+  
+          return new TreeNode(midValue, leftTree, rightTree);
+      }
+  };
+  ```
+
+3. ##### 从前序与中序遍历序列构造二叉树
+
+​	 给定的是前序遍历数组`preorder`，中序遍历数组`inorder`，和上面哪一题差不多
+
+* 直接使用`slice`得到一个两个子树的前序和中序遍历序列，然后递归
+
+  ```js
+  /**
+   * @param {number[]} preorder
+   * @param {number[]} inorder
+   * @return {TreeNode}
+   */
+  var buildTree = function (preorder, inorder) {
+      if (!preorder.length) return null;
+  
+      /* 确定中间结点 */
+      let rootValue = preorder.shift();
+      /* 找到中间节点在inorder中的下标 */
+      let rootIndex = inorder.indexOf(rootValue);
+  
+      /* 然后构造树 */
+      let curRoot = new TreeNode(rootValue);
+      curRoot.left = buildTree(preorder.slice(0, rootIndex), inorder.slice(0, rootIndex));
+      curRoot.right = buildTree(preorder.slice(rootIndex), inorder.slice(rootIndex + 1));
+      return curRoot;
+  };
+  ```
+
+* 简化一下，将右树遍历序列的pop出来，然后左树就可以用原地的数组了
+
+  ```js
+  /**
+   * @param {number[]} preorder
+   * @param {number[]} inorder
+   * @return {TreeNode}
+   */
+  var buildTree = function (preorder, inorder) {
+      /* 确定根结点值 */
+      let rootValue = preorder.shift();
+  
+      /* 初始化右树的前序和中序 */
+      let rightInorder = [];
+      let rightPreorder = [];
+      while ((cur = inorder.pop()) != rootValue) {
+          rightInorder.push(cur);
+          rightPreorder.push(preorder.pop());
+      }
+  
+      /* 构造一下 */
+      let leftTree = preorder.length ? buildTree(preorder, inorder) : null;
+      let rightTree = rightInorder.length ? buildTree(rightPreorder.reverse(), rightInorder.reverse()) : null;
+      return new TreeNode(rootValue, leftTree, rightTree);
+  };
+  ```
+
+4. ##### 最大二叉树
+
+   输入一个元素不重复且不为空的整数数组`nums`，按照以下算法构建一个最大二叉树：
+
+   - 根节点的值为当前数组中的`最大值`
+   - 递归地分别在数组最大值的左边部分和右边部分构建左右子树
+
+   返回从`nums`构建出来的最大二叉树
+
+* 方法一直接通过Math.max得到最大值，然后再最大值右边的部分给pop出来递归调用
+
+  ```js
+  /**
+   * @param {number[]} nums
+   * @return {TreeNode}
+   */
+  var constructMaximumBinaryTree = function (nums) {
+      /* 首先得到最大值 */
+      let max = Math.max(...nums);
+      /* 得到最大值右边的数组 */
+      let rightArr = [];
+      while ((cur = nums.pop()) != max) {
+          rightArr.push(cur);
+      }
+      rightArr.reverse();
+  
+      /* 递归构建左右树 */
+      let leftTree = nums.length ? constructMaximumBinaryTree(nums) : null;
+      let rightTree = rightArr.length ? constructMaximumBinaryTree(rightArr) : null;
+  
+      return new TreeNode(max, leftTree, rightTree);
+  };
+  ```
+
+* 同样也可以先得到最大值所在下标然后用slice方法得到左右数组
+
+  ```js
+  /**
+   * @param {number[]} nums
+   * @return {TreeNode}
+   */
+  var constructMaximumBinaryTree = function (nums) {
+  
+      /* 找到最大值所在位置 */
+      let maxIndex = 0, max = nums[0];
+      for (let i = 0; i < nums.length; i++) {
+          if (nums[i] > max) {
+              maxIndex = i;
+              max = nums[i];
+          }
+      }
+  
+      let leftTree = maxIndex == 0 ? null : constructMaximumBinaryTree(nums.slice(0, maxIndex));
+      let rightTree = maxIndex == nums.length - 1 ? null : constructMaximumBinaryTree(nums.slice(maxIndex + 1));
+  
+  
+      return new TreeNode(max, leftTree, rightTree);
+  };
+  ```
+
+* 原地算法，不创建新数组，给递归函数传递左闭右开的区间更好
+
+  ```js
+  /**
+   * @param {number[]} nums
+   * @return {TreeNode}
+   */
+  var constructMaximumBinaryTree = function (nums) {
+      /* 递归方法，传入数组以及起始点和终点,区间保证左闭右开 */
+      function buildTree(nums, left, right) {
+          /* 首先找到最大值及其下标 */
+          let maxValue = nums[left], maxIndex = left;
+          for (let index = left + 1; index < right; index++) {
+              if (nums[index] > maxValue) {
+                  maxValue = nums[index];
+                  maxIndex = index;
+              }
+          }
+  
+          /* 递归构建左右树 */
+          let leftTree = left == maxIndex ? null : buildTree(nums, left, maxIndex);
+          let rightTree = maxIndex == right - 1 ? null : buildTree(nums, maxIndex + 1, right);
+  
+          return new TreeNode(maxValue, leftTree, rightTree);
+      }
+  
+      return buildTree(nums, 0, nums.length);
+  };
+  ```
+
+  `PS：`
+
+  关于要不要加边界条件判断当前区间是不是为空区间，感觉调用之前进行判断更方便一些，因为要调用函数首先得找到`这个函数`然后又放到调用栈然后又再出栈，真的挺麻烦的。
+
+4. Vue3---插槽
+
+* [`作用域插槽`](https://v3.cn.vuejs.org/guide/component-slots.html#%E4%BD%9C%E7%94%A8%E5%9F%9F%E6%8F%92%E6%A7%BD)
+
+  可以通过在子组件中的slot标签中把子组件的标签传到父组件去，以下例子中将包含所有插槽`props`的对象命名为todo，因为本来传过来的就是它的所有属性。
+  
+  ```html
+  <div class="app">
+      <todo-list>
+        <template v-slot:default="todo">
+          {{todo.id + 1}}.
+          {{todo.title}}
+          <i class="fa fa-check-square-o"></i>
+        </template>
+      </todo-list>
+    </div>
+  ```
+  
+  ```js
+  const todoList = {
+    data() {
+      return {
+        todos: [
+          {
+            id: 0,
+            title: "feed my cat",
+          },
+          {
+            id: 1,
+            title: "watch ozark",
+          },
+          {
+            id: 2,
+            title: "learning vue3",
+          },
+        ],
+      };
+    },
+    template: `
+      <ul>
+        <li v-for="todo in todos" :key="todo.id">
+          <slot :=todo></slot>
+        </li>
+      </ul>
+    `,
+  };
+  
+  const app = Vue.createApp({
+    data() {
+      return {};
+    },
+    components: {
+      todoList,
+    },
+  });
+  
+  const vm = app.mount(".app");
+  
+  ```
+
+* 鉴于上面的todoList这个组件里只有一个插槽，故而完全可以不用`template`也不会造成混乱：
+
+  ```html
+  <div class="app">
+      <todo-list v-slot="todo">
+        {{todo.id + 1}}.
+        {{todo.title}}
+        <i class="fa fa-check-square-o"></i>
+      </todo-list>
+    </div>
+  ```
+
+  但是如果又多个具名插槽的话，还是要用`template`带上名字的写法
+
+* 因为作用域插槽内部的工作原理是将插槽的内容包含在一个传入`单个`参数的函数里的：
+
+  ```js
+  function(slotProps){
+      // ...插槽内容...
+  }
+  ```
+
+  那这样的话其实`v-slot`的值其实可以是什么作为函数定义中的`JavaScript`表达式，一般定义函数时可以使用的[`ES2015`](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment#Object_destructuring)结构传进来的插槽`prop对象`，如下就将传进来的prop结构出来了，包括每个todo对应的title和id
+
+  ```html
+    <div class="app">
+      <todo-list v-slot="{id,title}">
+        {{id + 1}}.
+        {{title}}
+        <i class="fa fa-check-square-o"></i>
+      </todo-list>
+    </div>
+  ```
+
+  同样也能对结构出来的属性进行改名以及设置默认值等，如下将`title`改名为`todo`，并且设置占位符为`“have nothing to do”`
+
+  ```html
+  <div class="app">
+      <todo-list v-slot="{id, title:todo='have nothing to do'}">
+        {{id + 1}}
+        {{todo}}
+        <i class="fa fa-check-square-o"></i>
+      </todo-list>
+    </div>
+  ```
+
+* 动态插槽名
+
+  同样动态的指令参数也能用在`v-slot:`后面更的插槽名上，就可`v-bind:[attributeName] = "url"`一样，只要将使用的`JavaScript`表达式用方括号括起来就行，如下
+
+  ```html
+  <base-layout>
+  	<template v-slot:[dynamicSlotName]>
+      	...
+      </template>
+  </base-layout>
+  ```
+
+* **`具名`**插槽的缩写
+
+  和`v-on`以及`v-bind`一样，`v-slot`也有缩写，如`v-slot:header`可以被缩写为`#header`
+
+  不过最好是在有参数的时候再用，某则会给出警号，使用缩写的时候必须用明确的插槽名取而代之
+
+  ```html
+  <div class="app">
+      <todo-list #default="{id, title:todo='have nothing to do'}">
+        {{id + 1}}.
+        {{todo}}
+        <i class="fa fa-check-square-o"></i>
+      </todo-list>
+    </div>
+  ```
+
+6. `provide`和`inject`
+
+   ​	通常，父组件向子组件传递数据的时候，我们会使用`props`，但是有的时候有一些深度嵌套的子组件需要使用父组件的部分内容，这个时候就不会将`prop`沿着组件向下逐级传递。只需要使用一对`provide`和`inject`。无论组件层次结构有多深，父组件都可以作为所有子组件的以来提供者。这个是父组件需要有一个`provide`选项，子组件有一个`inject`选项
+
+   如下所示：
+
+   父组件：
+
+   ```js
+   const app = Vue.createApp({
+     data() {
+       return {
+         otherTodo: "go for a run",
+       };
+     },
+     components: {
+       todoList,
+     },
+     provide: {
+       otherTodo: { id: 4, title: "go for a run" },
+     },
+   });
+   ```
+
+   子组件：todoList
+
+   ```js
+     template: `
+       <ul>
+         <li v-for="todo in todos" :key="todo.id">
+           <slot v-bind=todo></slot>
+         </li>
+         <li>
+           {{otherTodo.id+1}}.
+           {{otherTodo.title}}
+           <i class="fa fa-check-square-o"></i>
+         </li>
+       </ul>
+     `,
+     inject: ["otherTodo"],
+   ```
+
+   但是，如果`provide`需要使用所在组件的实例`property`，将不会起作用，这个时候，要将`provide`选项转为一个类似`data`的返回对象的函数：
+
+   ```js
+     data() {
+       return {
+         otherTodo: { id: 4, title: "go for a run" },
+       };
+     },
+     components: {
+       todoList,
+     },
+     provide() {
+       return {
+         otherTodo: this.otherTodo,
+       };
+     },
+   ```
+
+   这样我们能够更加安全地继续开发该组件，而不必担心可能改变或者删除了子组件所依赖地某些内容。
+
+   组件之间地接口依然是明确定义地，就像`prop`一样。
+
+   然而假如`provide`的数据是个计算了当前实例`property`后的属性，例如如果要`provide`一个数组的长度。那该绑定就不会是响应式的，这时候需要传一个`ref`的`property`或者`reactive`对象给`provide`来提供响应性。如下，给`provide`的`otherTodoLen`分配了一个组合式API `computed`属性：
+
+   ```js
+     data() {
+       return {
+         otherTodo: ["todo 1", "todo 2", "todo 3", "todo 4"],
+       };
+     },
+     components: {
+       todoList,
+     },
+     provide() {
+       return {
+         otherTodoLen: Vue.computed(() => this.otherTodo.length),
+       };
+     },
+     methods: {
+       addOtherTodo() {
+         this.otherTodo.push("another one");
+       },
+     },
+   ```
+
+   这样在调用`addOtherTodo`方法给数组添加元素时，也可以在页面上有所响应
+
+7. 动态组件中使用`keep-alive`
+
+   之前用`componet`标签加上`is`属性来实现过在不同的组件之间进行切换
+
+   这里的`currentTabComponent`可以是组件的名字，也可以是一个组件选项中的对象
+
+   ```html
+   <component :is="currentTabComponent"></component>
+   ```
+
+   在之前的切换标签的例子中，第二个标签组件`tab-posts`能够更新切换自己的状态。然后如果切换到另一个组件再切换回来，之前的状态并不会保存。因为每次切换标签的时候，`Vue`都会创建一个新的`currentTabComponent`实例。
+
+   通常重新创建动态组件是非常有用的，但是我们有的时候希望保存某些组件实例的状态，在他们第一次被创建的时候就缓存起来。而为了达到这个目的，我们用一个`<keep-alive>`元素将动态组件包裹起来，如下：
+
+   ```html
+   <!-- 这样失活的组件将会被缓存起来 -->
+   <keep-alive>
+       <component :is="currentTabComponent" class="tab"></component>
+   </keep-alive>
+   ```
+
+   `<keep-aive>`包裹动态组件时，会缓存不活动的组件实例，而不是销毁它们。它是一个抽象组件，自身并不会渲染一个`DOM`元素，也不会出现在组件的父组件链中。
+
+   当组件在`<keep-alive>`中被切换时，它的`mounted`和`unmounted`生命周期钩子不会被调用，取而代之的是`activated`和`deactivated`，这将会运用在`<keep-alive>`的**直接**子节点以及其所有子孙节点。
+
+   主要的目的在于保留组件状态或者避免重新渲染
+
+   `<keep-alive>`可以带三个属性：
+
+   - `include` - `String | RegExp | Array`可以带字符串，正则或者数组，后两者必须在include前面加一个`：`表示接的是`JavaScript`表达式。
+   - `exclude`：同上
+   - `max`，表示最多可以缓存多少组件实例，一旦达到了数字，之前已缓存的组件中最久没有被访问的实例会被销毁
+
+   如下，我们只需要缓存`tab-posts`这个组件的状态，避免重新渲染
+
+   ```html
+   <keep-alive include="tab-posts">
+         <component :is="currentTabComponent" class="tab"></component>
+   </keep-alive>
+   ```
+
+   匹配首先会检查组件自身的`name`选项，如果`name`选项不可用，则匹配它的父组件`components`选项中的键值，匿名的组件是不能被匹配的
+
+8. ##### 异步组件
+
+   在某些大型的应用中，有可能需要将应用分割成小的代码块，需要的时候才从服务器加载一个模块，这样来保证减少不必要的组件请求。为了实现这个效果，`Vue`有一个`defineAsncComponent`方法，写法如下：
+
+   ```js
+   const { defineAsyncComponent } = Vue;
+   
+   const asyncComp = defineAsyncComponent(() => {
+     return new Promise((resolve, reject) => {
+       /* 异步请求资源过程省略 */
+       resolve({
+         template: `<p>This is a async component just fetched from server</p>`,
+       });
+     });
+   });
+   const app = Vue.createApp({
+     data() {},
+     components: {
+       asyncComp,
+     },
+   });
+   
+   const vm = app.mount(".app");
+   
+   ```
+
+   如上，这个方法接受的是一个返回`Promise`对象的工厂方法，从服务器检索到组件的内容以及定义之后，调用`resolve`回调，否则也可以调用`reject(reason)`，表示加载失败了。
