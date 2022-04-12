@@ -3304,3 +3304,1216 @@
    ```
 
    如上，这个方法接受的是一个返回`Promise`对象的工厂方法，从服务器检索到组件的内容以及定义之后，调用`resolve`回调，否则也可以调用`reject(reason)`，表示加载失败了。
+
+
+#### 2022/04/09
+
+1. ##### 合并二叉树
+
+   输入两个二叉树：`root1`和`root2`，将他们合并，即重叠的部分值相加，不重叠的部分就将不为`null`的节点作为新二叉树的节点
+
+* 递归法一
+
+  设置一下边界条件即不重叠的情况然后就能直接递归了
+
+  ```js
+  /**
+   * @param {TreeNode} root1
+   * @param {TreeNode} root2
+   * @return {TreeNode}
+   */
+  var mergeTrees = function (root1, root2) {
+      /* 保证根节点非空 */
+      if (!root1) return root2;
+      if (!root2) return root1;
+  
+      let newRootVal = root1.val + root2.val;/* 新的根节点的值 */
+      /* 递归构建左右树 */
+      let leftTree = mergeTrees(root1.left, root2.left);
+      let rightTree = mergeTrees(root1.right, root2.right);
+      /* 返回新的根节点 */
+      return new TreeNode(newRootVal, leftTree, rightTree);
+  };
+  ```
+
+  以下不设置边界条件，看起来就麻烦多了
+
+  ```js
+  /**
+   * @param {TreeNode} root1
+   * @param {TreeNode} root2
+   * @return {TreeNode}
+   */
+  var mergeTrees = function (root1, root2) {
+      /* 递归函数，保证传进来的都是重叠的部分 */
+      function merge(node1, node2) {
+          let newRootValue = node1.val + node2.val;
+  
+          /* 递归得到左右树 */
+          let leftTree, rightTree;
+          if (node1.left && node2.left)
+              leftTree = merge(node1.left, node2.left);
+          else if (node1.left)
+              leftTree = node1.left;
+          else leftTree = node2.left;
+  
+          if (node1.right && node2.right)
+              rightTree = merge(node1.right, node2.right);
+          else if (node1.right)
+              rightTree = node1.right;
+          else rightTree = node2.right;
+  
+          /* 然后返回新树 */
+          return new TreeNode(newRootValue, leftTree, rightTree);
+      }
+  
+      if (!root1) return root2;
+      if (!root2) return root1;
+      return merge(root1, root2);
+  };
+  ```
+
+* 递归法二，原地修改第一棵树
+
+  ```js
+  /**
+   * @param {TreeNode} root1
+   * @param {TreeNode} root2
+   * @return {TreeNode}
+   */
+  var mergeTrees = function (root1, root2) {
+      /* 不重叠的部分 */
+      if (!root1) return root2;
+      if (!root2) return root1;
+  
+      /* 更新root1数值 */
+      root1.val += root2.val;
+      /* 递归更新root1的左右树 */
+      root1.left = mergeTrees(root1.left, root2.left);
+      root1.right = mergeTrees(root1.right, root2.right);
+      return root1;
+  };
+  ```
+
+* 采用堆栈原地合并
+
+  ```js
+  /**
+   * @param {TreeNode} root1
+   * @param {TreeNode} root2
+   * @return {TreeNode}
+   */
+  var mergeTrees = function (root1, root2) {
+      if (!root1) return root2;
+      if (!root2) return root1;
+      /* 由于TreeNode是引用的对象指针，故而可以直接用堆栈模拟原地合并 */
+      const treeStack1 = [root1];
+      const treeStack2 = [root2];
+  
+      while (treeStack1.length) {
+          let node1 = treeStack1.pop();
+          let node2 = treeStack2.pop();
+  
+          /* 首先更改node1数值 */
+          node1.val += node2.val;
+  
+          /* 然后判断左右 */
+          if (node1.right && node2.right) {
+              treeStack1.push(node1.right);
+              treeStack2.push(node2.right);
+          } else if (!node1.right && node2.right)
+              node1.right = node2.right;
+  
+          if (node1.left && node2.left) {
+              treeStack1.push(node1.left);
+              treeStack2.push(node2.left);
+          } else if (!node1.left && node2.left)
+              node1.left = node2.left;
+      }
+  
+      return root1;
+  };
+  ```
+
+* 也可以用一个二维的数组来作为堆栈模拟合并过程，在之前判断树对称的时候就是这样的
+
+  ```js
+  /**
+   * @param {TreeNode} root1
+   * @param {TreeNode} root2
+   * @return {TreeNode}
+   */
+  var mergeTrees = function (root1, root2) {
+      if (!root1) return root2;
+      if (!root2) return root1;
+  
+      /* 也可以用一个二维的数组直接模拟堆栈 */
+      let treeStack = [[root1, root2]];
+  
+      while (treeStack.length) {
+          let cur = treeStack.pop();
+          let node1 = cur[0];
+          let node2 = cur[1];
+  
+          /* 修改树1的值 */
+          node1.val += node2.val;
+  
+          /* 判断左右情况 */
+          if (node1.right && node2.right)
+              treeStack.push([node1.right, node2.right]);
+          else if (!node1.right && node2.right)
+              node1.right = node2.right;
+  
+          if (node1.left && node2.left)
+              treeStack.push([node1.left, node2.left]);
+          else if (!node1.left && node2.left)
+              node1.left = node2.left;
+      }
+  
+      return root1;
+  };
+  ```
+
+2. ##### 二叉搜索树中的搜索
+
+   输入一棵二叉搜索树的根结点`root`以及一个整数值`val`。要在树中找到值为`val`的节点并返回该节点，如果找不到就返回`null`。👍`还挺押韵`
+
+* 方法一，递归，找到了就得返回所以递归函数必须有一个返回值
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {number} val
+   * @return {TreeNode}
+   */
+  var searchBST = function (root, val) {
+      /* 边界条件，如果已经是叶子节点了且值不为val */
+      if (!root.left && !root.right && root.val != val)
+          return null;
+      else if (root.val == val) return root;
+  
+      /* 向下递归 */
+      let searchLeftRes = root.left ? searchBST(root.left, val) : null;
+      let searchRightRes = root.right ? searchBST(root.right, val) : null;
+  
+      return searchLeftRes || searchRightRes;
+  };
+  ```
+
+  关于最后面返回的看起来有点像是一个布尔值，但是其实又可以返回具体的数组对象，其实它应该相当于以下表达式：
+
+  ```js
+  if (searchLeftRes) return searchLeftRes;
+  else return searchRightRes;
+  ```
+
+* 迭代法
+
+  这种找到了目标就要返回的，可能用堆栈法看起来反而更清晰一点，因为堆栈本事不是调用栈，不是说就算找到了也要等栈清空了才能返回
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {number} val
+   * @return {TreeNode}
+   */
+  var searchBST = function (root, val) {
+      /* 通过堆栈模拟查找的过程 */
+      let nodeStack = [root];
+  
+      while (nodeStack.length) {
+          let cur = nodeStack.pop();
+  
+          if (cur.val == val) return cur;
+          if (cur.right) nodeStack.push(cur.right);
+          if (cur.left) nodeStack.push(cur.left);
+      }
+  
+      return null;
+  };
+  ```
+
+  **注意**：二叉搜索树是一个有序树：
+
+  - 如果左子树不为空，左子树上的节点值都是小于根节点值的
+  - 右子树不为空，它上面的所有结点值都是大于根节点值的
+  - 左、右子树同样也是二叉搜索树，所以它的递归遍历和迭代遍历和普通二叉树应该都有区别
+
+* 迭代法
+
+  通过堆栈模拟，在入栈前判断当前根节点值和搜索目标的大小关系
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {number} val
+   * @return {TreeNode}
+   */
+  var searchBST = function (root, val) {
+      /* 用堆栈模拟，并且考虑到二叉搜索树的有序性 */
+      let nodeStack = [root];
+  
+      while (nodeStack.length) {
+          let cur = nodeStack.pop();
+  
+          if (cur.val == val) return cur;
+  
+          /* 左右入栈，先判断目标值应该在那一边 */
+          if(root.val < val && root.right) nodeStack.push(root.right);
+          if(root.val > val && root.left) nodeStack.push(root.left);
+      }
+      return null;
+  };
+  ```
+
+* 递归法
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {number} val
+   * @return {TreeNode}
+   */
+  var searchBST = function (root, val) {
+      /* 如果已经是叶子节点且值不相等 */
+      if (!root.left && !root.right && root.val != val) return null;
+  
+      if (root.val == val) return root;
+  
+      /* 然后左右递归 */
+      if (root.val > val && root.left) return searchBST(root.left, val);
+      if (root.val < val && root.right) return searchBST(root.right, val);
+      return null;
+  };
+  ```
+
+  完全没有必要先判断大小然后再在`if body`里头去判断有没有左节点，`if else`嵌套的太深了不仅影响美观，而且也提高不了多少性能嘛
+
+* 最终迭代法，由于二叉搜索树搜索方向是独一无二的，完全没必要借助堆栈
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {number} val
+   * @return {TreeNode}
+   */
+  var searchBST = function (root, val) {
+      /* 由于二叉搜索树的独特性，它的迭代并不需要借助堆栈实现 */
+      while (root) {
+          /* 找到了就返回，否则就换方向 */
+          if (root.val == val) return root;
+  
+          if (root.val > val) root = root.left;
+          else root = root.right;
+      }
+      return null;
+  };
+  ```
+
+
+3. ##### 模板引用
+
+   有的时候需要在`JavaScript`中直接访问子组件或者某个`HTML`元素。此时可以使用`ref`属性为子组件或者`HTML`元素指定一个用于引用的`ID`，如下给一个输入框指定了引用`ID`为`input`
+
+   ```html
+   <input ref="input" type="text" />
+   ```
+
+   然后就能在`js`中直接通过`$refs`对象来操作这个`html`元素
+
+   ```js
+   const baseInput = {
+     template: `<input ref="input" type="text" />`,
+     methods: {
+       focusInput() {
+         /* 找到本组件中的input，然后focus */
+         this.$refs.input.focus();
+       },
+     },
+     mounted() {
+       this.focusInput();
+     },
+   };
+   ```
+
+   然后如果想在父组件里操纵子组件，可以直接向组件本身添加另一个`ref`：
+
+   ```html
+   <base-input ref="usernameInput"></base-input>
+   ```
+
+   ```js
+   const app = Vue.createApp({
+     data() {
+       return {};
+     },
+     components: {
+       baseInput,
+     },
+     mounted() {
+       this.$refs.usernameInput.focusInput();
+     },
+   });
+   ```
+
+   **注意：**
+
+   ​     `$refs`只会在组件渲染完成之后生效，这仅仅能作为一个用于直接操作子元素的方案，应该避免在模板或者计算元素中访问`$refs`
+
+
+#### 2022/04/10
+
+1. ##### 验证二叉搜索树
+
+   给定一个二叉树的根节点`root`，返回一个`Boolean`值，判断其是不是有效的二叉搜索树。
+
+   二叉搜索树的定义为：
+
+   - 节点的左子树只包含小于当前节点的数。
+   - 节点的右子树只包含大于当前节点的数。
+   - 所有的左子树和右子树自身也只二叉搜索树
+
+   显然二叉搜索树的中序遍历数组必须是从小到大的
+
+* 故而可以采用中序遍历，一旦发现下一个遍历到的值反而比前一个小，即返回`false`
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {boolean}
+   */
+  var isValidBST = function (root) {
+      // 中序遍历，从左到右必须满足从大到小
+      function inorderTraversal(node) {
+          if (isBST && node.left) inorderTraversal(node.left);
+          /* 如果前一个结点的值反而大 */
+          if (preVal >= node.val)
+              isBST = false;
+          preVal = node.val;
+          if (isBST && node.right) inorderTraversal(node.right);
+      }
+  
+      if (!root) return true;
+      let preVal = -Infinity;/* 初始化前一个数值 */
+      let isBST = true;/* 初始化结果 */
+      inorderTraversal(root);
+      return isBST;
+  };
+  ```
+
+* 简化以下，不用借助另一个全局布尔变量，直接返回，返回`左树&&右树`，说明一旦遇到错误情况即返回`false`
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {boolean}
+   */
+  var isValidBST = function (root) {
+      /* 中序遍历，返回Boolean值 */
+      function inorderTraversal(node) {
+          let isLeftBST = node.left ? inorderTraversal(node.left) : true;
+  
+          if (preVal >= node.val) return false;/* 如果当前节点比前一个要小 */
+          preVal = node.val;/* 更新前一个数值 */
+  
+          let isRightBST = node.right ? inorderTraversal(node.right) : true;
+  
+          return isLeftBST && isRightBST;
+      }
+  
+      let preVal = -Infinity;/* 前一个值初始化为无穷小 */
+      if (!root) return true;
+      return inorderTraversal(root);
+  };
+  ```
+
+* 迭代法
+
+  需要找到路径然后返回`Boolean`值的情况反而用堆栈模拟迭代法可能反而更加清晰
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {boolean}
+   */
+  var isValidBST = function (root) {
+      /* 借助堆栈来进行中序遍历 */
+      const nodeStack = [];
+      let cur = root;
+      let preVal = -Infinity;
+  
+      while (cur || nodeStack.length) {
+          if (cur) {
+              /* 先一直往左遍历 */
+              nodeStack.push(cur);
+              cur = cur.left;
+          } else {
+              cur = nodeStack.pop();/* 将中间节点pop出来 */
+  
+              /* 比较是不是有效的BST */
+              if (preVal >= cur.val) return false;
+              preVal = cur.val;
+  
+              /* 往右走 */
+              cur = cur.right;
+          }
+      }
+      return true;
+  };
+  ```
+
+  通过`push`一个`null`作为中间节点的标志
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {boolean}
+   */
+  var isValidBST = function (root) {
+      if (!root) return true;
+      /* 借助堆栈来进行中序遍历 */
+      const nodeStack = [root];
+      let preVal = -Infinity;/* 初始化前一个数值 */
+  
+      while (nodeStack.length) {
+          let node = nodeStack.pop();
+          if (node) {
+              /* 说明不是中间节点 */
+              if (node.right) nodeStack.push(node.right);
+              nodeStack.push(node.val);
+              nodeStack.push(null);/* 中间标志 */
+              if (node.left) nodeStack.push(node.left);
+          } else {
+              let curVal = nodeStack.pop();/* 得到当前值 */
+              if (preVal >= curVal) return false;
+              preVal = curVal;
+          }
+      }
+  
+      return true;
+  };
+  ```
+
+* 也可以中序得到了数组，然后再进行遍历比较
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {boolean}
+   */
+  var isValidBST = function (root) {
+      /* 中序遍历，得到数组 */
+      const inorderTraversal = (node) => {
+          if (node.left) inorderTraversal(node.left);
+  
+          inorderArr.push(node.val);
+  
+          if (node.right) inorderTraversal(node.right);
+      }
+  
+      if (!root) return true;
+      /* 首先得到中序的数组 */
+      const inorderArr = [];
+      inorderTraversal(root);
+      for (let i = 1; i < inorderArr.length; i++) {
+          /* 如果后一个小于等于前一个，就不是BST */
+          if (inorderArr[i] <= inorderArr[i - 1])
+              return false;
+      }
+      return true;
+  };
+  ```
+
+2. ##### 二叉搜索树的最小绝对值
+
+   输入是一个二叉搜索树的根节点`root`，返回树中任意两个不同节点值之间的最小差值。
+
+   差值一定是要给正数，为两值之差的绝对值。从某种意义上意味着在坐标轴上最小的距离。
+
+* 故而可以中序遍历，遍历过程中比较大小，维护一个全局变量`minGap`
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number}
+   */
+  var getMinimumDifference = function (root) {
+      /* 由于BST的中序遍历结果是从小到大的，故而可以中序遍历然后更新差值 */
+      const inorderTraversal = node => {
+          if (node.left) inorderTraversal(node.left);
+  
+          /* 比较 */
+          let curVal = node.val;
+          if (preVal != null && curVal - preVal < minGap)
+              minGap = curVal - preVal;
+          preVal = curVal;
+  
+          if (node.right) inorderTraversal(node.right);
+      }
+  
+      /* 初始化前一个值，以及最小的差值 */
+      let preVal = null;
+      let minGap = Infinity;
+      inorderTraversal(root);
+      return minGap;
+  };
+  ```
+
+* 也可以先得到遍历结果，然后再进行比较，因为这个这几个变量初始化以及验证都挺麻烦的
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number}
+   */
+  var getMinimumDifference = function (root) {
+      /* 由于BST的中序遍历结果是从小到大的，故而可以中序遍历然后更新差值 */
+      const inorderTraversal = node => {
+          if (node.left) inorderTraversal(node.left);
+  
+          inorderArr.push(node.val);
+  
+          if (node.right) inorderTraversal(node.right);
+      }
+  
+      const inorderArr = [];
+      inorderTraversal(root);
+      let minGap = inorderArr[1] - inorderArr[0];
+  
+      for (let i = 2; i < inorderArr.length; i++) {
+          if ((curGap = inorderArr[i] - inorderArr[i - 1]) < minGap)
+              minGap = curGap;
+      }
+      return minGap;
+  };
+  ```
+
+* 堆栈模拟递归过程
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number}
+   */
+  var getMinimumDifference = function (root) {
+      /* 通过堆栈模拟中序遍历的过程 */
+      const nodeStack = [];
+      let cur = root;
+      let preVal = null;
+      let minGap = Infinity;
+  
+      while (cur || nodeStack.length) {
+          if (cur) {
+              /* 左 */
+              nodeStack.push(cur);
+              cur = cur.left;
+          } else {
+              /* 中 */
+              cur = nodeStack.pop();
+              if (preVal != null) {
+                  if (cur.val - preVal < minGap)
+                      minGap = cur.val - preVal;
+              }
+              preVal = cur.val;
+              /* 右 */
+              cur = cur.right;
+          }
+      }
+  
+      return minGap;
+  };
+  ```
+
+
+3. [`格式化上下文`](https://developer.mozilla.org/zh-CN/docs/Web/Guide/CSS/Block_formatting_context)
+
+   **格式化上下文（Block Formatting Context, BFC）**是`Web`页面地可视`CSS`渲染地一部分，是块盒子的布局过程发生的区域，就是`display: block`的盒子的布局就是发生在一个`BFC`中的，因为`html`标签本身就是一个块格式化上下文。同时`BFC`是浮动元素与其他元素交互的区域。
+
+   以下的方式都能创建一个新的块格式上下文`：
+
+   - 根元素（`<html>`）
+
+   - 浮动元素，即`float`设置了非`none`的值，比如说：`left | right | inline-start | inline-end`'
+
+   - 绝对定位元素：`position`为`absolute`或者`fixed`
+
+   - 行内块元素 / `display: inline-block`
+
+   - 表格单元格 / `display: table-cell`
+
+   - 表格标题 / `display: table-caption`
+
+   - 匿名表格单元格元素：
+
+     |                      |                                |
+     | -------------------- | ------------------------------ |
+     | `display`            | `table`中拥有对应display的属性 |
+     | `table`              | `table`                        |
+     | `table-row`          | `tr`                           |
+     | `table-row-group`    | `tbody`                        |
+     | `table-header-group` | `thead`                        |
+     | `table-footer-group` | `tfoot`                        |
+     | `inline-table`       |                                |
+
+   * `overflow`计算值(`Computed`)不为`visible`的块元素
+   * `display`为`flow-root`的元素
+   * `flex item` / `display: flex | inline-flex`的元素的直接子元素
+   * `grid item` / `display: grid | inline-grid`的元素的直接子元素
+   * 多列容器： 元素的`column-count`或者`column-width`不为`auto`，包括`colum-count: 1`
+   * `column-span : all`的元素，几件事没有包含在一个多列容器中也会创建一个新的`BFC`
+
+   快格式化上下文包含创建它的元素内部的所有内容。
+
+   `BFC`对浮动定位/`float`和清除浮动/`clear`都很重要，因为他们都是会应用于同一个`BFC`内的元素。外边距折叠(`Master Margin collapsing`)也只会发生在属于同一`BFC`的元素之间。所以同一个`flex`布局中的`flex item`之间就不会发生外边距折叠。
+
+   如果没有`BFC`，在设置浮动的时候，必须要在浮动元素所在位置留出空间，为非浮动元素添加`margin`，以将线框推离它。
+
+   创建一个`BFC`能够避免浮动元素脱父元素，父元素中的所有内容都会参与`BFC`，浮动的内容不会从底部溢出。
+
+   同时创建新的`BFC`能够两个相邻`div`或者父子`div`之间的外边距塌陷问题。 
+
+   创建一个会包含的浮动如上所示，有多种方法。
+
+   - 方法一、设置`overflow：auto | hidden | scroll`等非`visible`的值
+   - 方法二、设置父元素`display：flow-root`，其实`flow-root`这个值的名字，就意味着要创建一个行为类似于`根元素root`之类的元素，即浏览器中的`html标签`。创建一个上下文，里面进行`flow layout`，正常文档流布局
+   - 方法三、设置`contain：layout | paint | content | strict`等。
+
+
+#### 2022/04/11
+
+1. ##### 二叉搜索树中的众数
+
+   输入一个**含有重复值**的二叉搜索树(`BST`)的根节点`root`，找出并且返回其中所有众数，返回形式为数组，因为众数可能不止一个。
+
+* 如果是普通的二叉树的话，那就得用一个map来存储所有的值和出现次数然后再排序了
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number[]}
+   */
+  var findMode = function (root) {
+      /* 前序遍历，过程中通过map统计次数 */
+      const preorderTraversal = node => {
+          if (freqMap.has(node.val)) {
+              let count = freqMap.get(node.val) + 1
+              freqMap.set(node.val, count);
+          } else freqMap.set(node.val, 1);
+  
+          if (node.left) preorderTraversal(node.left);
+          if (node.right) preorderTraversal(node.right);
+      }
+  
+      const freqMap = new Map();
+      preorderTraversal(root);
+      /* 将map转为数组然后按照频率从大到小排列 */
+      let resArr = [...freqMap].sort((a, b) => b[1] - a[1]);
+      let maxCount = resArr[0][1];
+      let modeArr = [];
+  
+      for (const pair of resArr) {
+          pair[1] == maxCount && modeArr.push(pair[0]);
+      }
+      return modeArr;
+  };
+  ```
+
+* 中序遍历递归法
+
+  由于`BST`中序遍历的结果是一个从小到大的数组，故而极为方便统计，只要缓存一下前面的众数以及数量，然后统计下一个数的数量即可，然后一旦遇到另一个新的数，再进行更新操作
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number[]}
+   */
+  var findMode = function (root) {
+      /* 中序遍历BST，其数值是从小到大的 */
+      function inorderTraversal(node) {
+          if (node.left) inorderTraversal(node.left);
+          update(node.val);
+          if (node.right) inorderTraversal(node.right);
+      }
+  
+      /* 通过给定值更新当前众数和下一个众数 */
+      const update = (val) => {
+          if (nextMode == null) {
+              /* 刚开始 */
+              nextMode = val;
+              nextModeCount = 1;
+          } else if (val == nextMode) {
+              nextModeCount++;
+          } else {
+              if (!curMode.length) {
+                  curMode.push(nextMode);
+                  curModeCount = nextModeCount;
+              } else {
+                  if (curModeCount == nextModeCount) {
+                      curMode.push(nextMode);
+                  } else if (curModeCount < nextModeCount) {
+                      curMode = [nextMode];
+                      curModeCount = nextModeCount;
+                  }
+              }
+              nextMode = val;
+              nextModeCount = 1;
+          }
+      }
+  
+      /* 当前众数数组以及其出现次数 */
+      let curMode = [], curModeCount = null;
+      let nextMode = null, nextModeCount = 0;
+      inorderTraversal(root);
+      /* 最后还得更新一下 */
+      update(Infinity);
+      return curMode;
+  };
+  ```
+
+* 也能首先得到一个数组，然后再进行更新
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number[]}
+   */
+  var findMode = function (root) {
+      /* 递归得到数组，然后再统计众数 */
+      const inorderTraversal = node => {
+          if (node.left) inorderTraversal(node.left);
+          inorderArr.push(node.val);
+          if (node.right) inorderTraversal(node.right);
+      }
+  
+      const inorderArr = [];
+      inorderTraversal(root);
+      /* 初始化众数数组以及其频率 */
+      let modeArr = [];
+      let modeFreq = 0;
+      /* 当前数字以及其频率 */
+      let curVal = inorderArr[0];
+      let curValFreq = 1;
+  
+      /* 更新函数 */
+      const updateMode = val => {
+          if (val == curVal) {
+              curValFreq++;
+          } else {
+              if (!modeArr.length) {
+                  modeArr.push(curVal);
+                  modeFreq = curValFreq;
+              } else if (curValFreq > modeFreq) {
+                  /* 当前数字频率大于众数频率，更新 */
+                  modeArr = [curVal];
+                  modeFreq = curValFreq;
+              } else if (curValFreq == modeFreq) {
+                  modeArr.push(curVal);
+              }
+              /* 更新当前数字 */
+              curVal = val;
+              curValFreq = 1;
+          }
+      }
+  
+      /* 循环数组 */
+      for (let i = 1; i < inorderArr.length; i++) {
+          updateMode(inorderArr[i]);
+      }
+      updateMode(Infinity);/* 最后还得更新一遍 */
+      return modeArr;
+  };
+  ```
+
+* 也能先得到一个二维数组记录每个数字出现的次数然后再得到众数
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number[]}
+   */
+  var findMode = function (root) {
+      /* 使用几个二维数组记录每个数字出现的次数 */
+      const inorderTraversal = node => {
+          if (node.left) inorderTraversal(node.left);
+          let len = freqArr.length;
+          /* 如果len大于0且最后一个记录的数字和当前节点的值相同 */
+          if (len && freqArr[len - 1][0] == node.val) {
+              freqArr[len - 1][1]++;
+          } else {
+              freqArr.push([node.val, 1]);
+          }
+          if (node.right) inorderTraversal(node.right);
+      }
+  
+      const freqArr = [];
+      inorderTraversal(root);
+      /* 循环数组得到众数 */
+      let modeArr = [freqArr[0][0]];/* 初始化 */
+      let modeFreq = freqArr[0][1];
+  
+      for (let i = 1; i < freqArr.length; i++) {
+          let curVal = freqArr[i][0];
+          let curFreq = freqArr[i][1];
+          if (curFreq == modeFreq) {
+              modeArr.push(curVal);
+          } else if (curFreq > modeFreq) {
+              modeArr = [curVal];
+              modeFreq = curFreq;
+          }
+      }
+  
+      return modeArr;
+  };
+  ```
+
+* 堆栈模拟数组看起来也很清晰
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {number[]}
+   */
+  var findMode = function (root) {
+      /* 堆栈来模拟递归的过程 */
+      const nodeStack = [];
+      let cur = root;
+      let modeArr = [];/* 初始化众数数组 */
+      let modeFreq = 0;
+      let curVal = null;
+      let curValFreq = 0;
+  
+  
+      /* 更新众数的方法，传入当前数值 */
+      const updateMode = val => {
+          if (curVal == null) {
+              curVal = val;
+              curValFreq = 1;
+          } else if (curVal == val) {
+              curValFreq++;
+          } else {
+              if (!modeArr.length) {
+                  modeArr.push(curVal);
+                  modeFreq = curValFreq;
+              } else if (modeFreq == curValFreq) {
+                  modeArr.push(curVal);
+              } else if (modeFreq < curValFreq) {
+                  modeArr = [curVal];
+                  modeFreq = curValFreq;
+              }
+              curVal = val;
+              curValFreq = 1;
+          }
+      }
+  
+      while (cur || nodeStack.length) {
+          if (cur) {
+              nodeStack.push(cur);
+              cur = cur.left;
+          } else {
+              cur = nodeStack.pop();
+              updateMode(cur.val);
+              cur = cur.right;
+          }
+      }
+  
+      /* 最后update一遍 */
+      updateMode(Infinity);
+      return modeArr;
+  };
+  ```
+
+
+#### 2022/04/12
+
+1. 二叉树的最近公共祖先
+
+   给定一个二叉树`root`，找到该树中指定的两个节点的最近公共祖先。
+
+* 递归法，深度遍历找到两个节点的路径，然后从后往前找到最近公共祖先
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {TreeNode} p
+   * @param {TreeNode} q
+   * @return {TreeNode}
+   */
+  var lowestCommonAncestor = function (root, p, q) {
+      /* 深度优先搜索分别得到两个节点的路径 */
+      const traversal = node => {
+          pathQ.push(node);
+          pathP.push(node);
+          if (node == q) {
+              /* 找到了q */
+              pathArr.push([...pathQ]);
+              if (pathArr.length == 2)
+                  hasFounded = true;
+          }
+          if (node == p) {
+              /* 找到了p */
+              pathArr.push([...pathP]);
+              if (pathArr.length == 2)
+                  hasFounded = true;
+          }
+  
+          if (!hasFounded && node.left) {
+              traversal(node.left);
+              pathP.pop();
+              pathQ.pop();/* 回溯 */
+          }
+  
+          if (!hasFounded && node.right) {
+              traversal(node.right);
+              pathP.pop();
+              pathQ.pop();
+          }
+      }
+  
+      /* 分别记录p的路径和q的路径以及存储最终两条路径 */
+      const pathP = [];
+      const pathQ = [];
+      const pathArr = [];
+      let hasFounded = false;/* 标志着是否两条路径都找到了 */
+      traversal(root);
+      // 从pathArr中找到公共祖先，从较短的路径的尾部开始找
+      let tail = Math.min(pathArr[0].length, pathArr[1].length);
+      while (tail--) {
+          if (pathArr[0][tail] == pathArr[1][tail])
+              return pathArr[1][tail];
+      }
+  };
+  ```
+
+* 只用一个path数组其实就可以
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {TreeNode} p
+   * @param {TreeNode} q
+   * @return {TreeNode}
+   */
+  var lowestCommonAncestor = function (root, p, q) {
+      /* 深度遍历利用回溯找到root到p，q的路径 */
+      const getPath = node => {
+          path.push(node);/* 首先加入当前节点 */
+  
+          if (node == p || node == q) {
+              pathArr.push([...path]);/* 必须浅克隆 */
+              if (pathArr.length == 2)
+                  hasFound = true;/* 如果两个节点都找到了 */
+          }
+  
+          if (!hasFound && node.left) {
+              getPath(node.left);
+              path.pop();
+          }
+          if (!hasFound && node.right) {
+              getPath(node.right);
+              path.pop();/* 回溯 */
+          }
+      }
+  
+      /* 初始化全局变量 */
+      const pathArr = [];
+      const path = [];
+      let hasFound = false;
+      getPath(root);
+  
+  
+      /* 从后往前找最近公共祖先 */
+      let tail = Math.min(pathArr[0].length, pathArr[1].length);
+      while (tail--) {
+          if (pathArr[0][tail] == pathArr[1][tail])
+              return pathArr[0][tail];
+      }
+  };
+  ```
+
+* 采用堆栈法模拟回溯过程
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {TreeNode} p
+   * @param {TreeNode} q
+   * @return {TreeNode}
+   */
+  var lowestCommonAncestor = function (root, p, q) {
+      /* 通过堆栈来进行深度遍历并且对路径path数组进行回溯找到两条路径 */
+      const nodeStack = [root];
+      const path = [];
+      let tempPath = null;/* 用于存储第一个找到的节点路径 */
+  
+      while (nodeStack.length) {
+          let cur = nodeStack.pop();
+          if (cur) {
+              path.push(cur);
+              nodeStack.push(null);/* push一个回溯标志 */
+              if (cur == p || cur == q) {
+                  if (!tempPath) {
+                      /* 如果还只是找到第一条 */
+                      tempPath = [...path];
+                  } else break;/* 否则就找完了 */
+              }
+              /* 右左子孩子push */
+              if (cur.right) nodeStack.push(cur.right);
+              if (cur.left) nodeStack.push(cur.left);
+          } else {
+              path.pop();/* 回溯 */
+          }
+      }
+  
+      /* 从后往前找最近公共祖先 */
+      let tail = Math.min(tempPath.length, path.length);
+      while (tail--) {
+          if (tempPath[tail] == path[tail])
+              return path[tail];
+      }
+  };
+  ```
+
+* 也可以边回溯边找最近公共祖先
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {TreeNode} p
+   * @param {TreeNode} q
+   * @return {TreeNode}
+   */
+  var lowestCommonAncestor = function (root, p, q) {
+      /* 通过堆栈来进行深度遍历并且对路径path数组进行回溯找到两条路径 */
+      const nodeStack = [root];
+      const path = [];
+      let tempPath = null;/* 用于存储第一个找到的节点路径 */
+  
+      while (nodeStack.length) {
+          let cur = nodeStack.pop();
+  
+          if (cur) {
+              path.push(cur);
+              nodeStack.push(null);/* push一个回溯标志位 */
+  
+              if (cur == p || cur == q) {
+                  if (!tempPath) tempPath = [...path];
+                  else break;
+              }
+  
+              if (cur.right) nodeStack.push(cur.right);
+              if (cur.left) nodeStack.push(cur.left);
+          } else {
+              let poped = path.pop();/* 回溯 */
+              if (tempPath) {
+                  let len = tempPath.length;
+                  if (tempPath[len - 1] == poped)
+                      tempPath.pop();
+              }
+          }
+      }
+      return tempPath.pop();
+  };
+  ```
+
+* 通过后序遍历，从下往上找。
+
+  这个题目和求最大深度或者求总结点数非常像，都是如果从下往上来计算并且返回一个值的题目。
+
+  问题就在于找出边界条件，以及怎么返回值。
+
+  首先明确要返回的是一个`Boolean`值还是一个具体的东西。
+
+* 需要找到一条特定的路径或者一个结果，找到了就返回
+
+  如果是一个`Boolean`值，类似于判断是否高度平衡的二叉树的那道题，就可以只要找到了不是平衡，即左右树高度差大于1，就能返回`false`了，故而他的返回逻辑如下：
+
+  ```js
+  let left = isSymetric(root.left);
+  if(left == -1) return -1; // 返回-1表示发现不平衡了
+  let right = isSymetric(root.right);
+  if(right == -1) return -1;
+  if(Math.abs(left - right) > 1)  return -1; // 左右树高度差大于1则不平衡
+  
+  // 最终才会返回当前树的最大深度
+  return Math.max(left,right)+1;
+  ```
+
+  类似的还有找出二叉树路径和Ⅰ那道题，判断是否存在路径和为`targetSum`的路径，这个判断更为简单，找到了就返回，左右树是一个或的过程，同时是一个前序遍历
+
+  ```js
+  if(sum == targetSum) return true;
+  
+  return hasTargetSum(root.left) || hasTargetSum(root.right);
+  ```
+
+* 需要遍历整棵树，然后返回具体的值
+
+  而像是返回最大深度就没有这么复杂，只要首先得到左右树的最大深度，然后返回两者更大的然后加一即可
+
+  ```js
+  let left = root.left ? getHeight(root.left) : 0;
+  let right = root.right ? getHeight(root.right) : 0;
+  return Math.max(left,right) + 1;
+  ```
+
+  类似的还有求节点总数
+
+  ```js
+  return getNodesNum(root.left) + getNodesNum(root.right) + 1;
+  ```
+
+* 另一大类就是不需要返回，是要遍历整棵树，然后返回符合条件的结果数组，如深度优先搜索，层序遍历，找出所有路径，所有满足条件的路径等，就并不需要使用后序遍历，什么都行，只要每次都将结果加入数组。当然，其实所有的二叉树题目的方法都很多。
+
+  不过后序遍历对于某些题目来说，有着巨大的优势，同时又不是特别方便通过堆栈模拟递归来实现迭代法。
+
+* 总之，这个题目是从后往前找更加方便，并且返回值应该是一个具体的节点。而要找最近公共祖先有如下两种情况：
+
+  * 目标节点p和q分别在当前节点的左树和右树上，那必然当前根节点就是最近公共的祖先的
+  * 另一种情况就是p，q节点本身就是最近公共祖先
+
+  所以再后序遍历的过程中，一旦遇到目标节点，则返回本身，然后再当前层的逻辑中，首先去得到左右树的返回，如果发现p，q分别在左右树上就返回当前根节点
+
+  而如果只有一边有的话，那就返回那一边的返回值
+
+* 边界条件如下：
+
+  ```js
+  if(root == p || root == q) return root;
+  ```
+
+* 而逻辑如下，首先递归，然后进行判断
+
+  ```js
+  let left = root.left ? lowestCommonAncestor(root.left) : null;
+  let right = root.right ? lowestCommonAncestor(root.right) : null;
+  
+  // 如果p，q分别在左右树，则返回root
+  if(left && right) return root;
+  return left || right; // 否则返回任意一方不为空的节点
+  ```
+
+  后序遍历整体解法如下：
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {TreeNode} p
+   * @param {TreeNode} q
+   * @return {TreeNode}
+   */
+  var lowestCommonAncestor = function (root, p, q) {
+      /* 边界条件，如果找到了p或者q就直接返回 */
+      if (root == p || root == q) return root;
+  
+      /* 否则递归查找左树然后找右树 */
+      let left = root.left ? lowestCommonAncestor(root.left, p, q) : null;
+      let right = root.right ? lowestCommonAncestor(root.right, p, q) : null;
+  
+      /* 如果左树右树均存在一个目标节点，当前根节点是最近公共祖先 */
+      if (left && right) return root;
+      /* 如果只有左树有，返回左树，反之返回右树 */
+      return left || right;
+  };
+  ```
+
+  本题也是需要遍历整棵树，因为这里的后序遍历需要得到左右树的结果，然后再往上走，说的有理一点，就是要使用递归函数的返回值进行逻辑判断，作为上一层的结果。
