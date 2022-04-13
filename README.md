@@ -4517,3 +4517,462 @@
   ```
 
   本题也是需要遍历整棵树，因为这里的后序遍历需要得到左右树的结果，然后再往上走，说的有理一点，就是要使用递归函数的返回值进行逻辑判断，作为上一层的结果。
+
+
+#### 2022/04/13
+
+1. ##### 二叉搜索树的最近公共祖先
+
+   输入一个二叉搜索树的根节点`root`，以及两个指定节点`p`，`q`；要返回两个指定节点的最近公共祖先。`p`和`q`一定在给定的树中。
+
+* 由于二叉搜索树的特性，可以直接从上往下按照固定方向找
+
+  如果`p`和`q`的值在`root`的值的两边，那就说明`root`本身是最近公共祖节点
+
+  而如果率先找到了`p`或者`q`，那么当前节点就是最近公共祖节点
+
+* 采用从上往下的前序遍历并且有方向地查找
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {TreeNode} p
+   * @param {TreeNode} q
+   * @return {TreeNode}
+   */
+  var lowestCommonAncestor = function (root, p, q) {
+      /* 由于二叉搜索树的左右值大小确定，故而查找方向确定 */
+      /* 如果当前就是p或者q，那就是最近公共祖先 */
+      if (root == p || root == q) return root;
+  
+      /* 如果root的值在p，q的中间，那么说明root就是最近公共祖先 */
+      if (root.val > p.val && root.val < q.val) return root;
+      if (root.val > q.val && root.val < p.val) return root;
+  
+      /* 如果p和q都在固定一侧 */
+      if (root.val > p.val && root.val > q.val) return lowestCommonAncestor(root.left, p, q);
+      if (root.val < p.val && root.val < q.val) return lowestCommonAncestor(root.right, p, q);
+  };
+  ```
+
+* 迭代法，其实用不着递归，反正从某种意义上是按照固定路径去找
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {TreeNode} p
+   * @param {TreeNode} q
+   * @return {TreeNode}
+   */
+  var lowestCommonAncestor = function (root, p, q) {
+      let cur = root;
+  
+      /* 按照固定方向查找 */
+      while (cur) {
+          /* 如果找到了就直接返回 */
+          if (cur.val == p.val || cur.val == q.val)
+              return cur;
+          /* 如果cur的值在中间 */
+          if (cur.val > p.val && cur.val < q.val)
+              return cur;
+          if (cur.val < p.val && cur.val > q.val)
+              return cur;
+          /* 否则就根据大小看往那边找 */
+          if (cur.val > p.val && cur.val > q.val)
+              cur = cur.left;
+          else cur = cur.right;
+      }
+  };
+  ```
+
+* 优化一下，首先保证p的值小于q的值，然后再迭代
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {TreeNode} p
+   * @param {TreeNode} q
+   * @return {TreeNode}
+   */
+  var lowestCommonAncestor = function (root, p, q) {
+      /* 初始化当前指针 */
+      let cur = root;
+  
+      /* 保证p的值小于q的值 */
+      if (p.val > q.val)
+          [p, q] = [q, p];
+  
+      /* 迭代，二叉搜索树搜索时按照固定路径 */
+      while (cur) {
+          if (cur.val == p.val || cur.val == q.val)
+              return cur;
+  
+          /* 如果cur.val在中间 */
+          if (cur.val > p.val && cur.val < q.val) return cur;
+  
+          /* 如果p，q都小于cur.val, 往左找 */
+          if (cur.val > q.val) cur = cur.left;
+          /* 反之往右找 */
+          else cur = cur.right;
+      }
+  };
+  ```
+
+* 如果明确判定的顺序可以看着更加简洁
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {TreeNode} p
+   * @param {TreeNode} q
+   * @return {TreeNode}
+   */
+  var lowestCommonAncestor = function (root, p, q) {
+      /* 保证p的值小于q的值 */
+      if (p.val > q.val)
+          [p, q] = [q, p];
+  
+      /* 迭代，首先决定往那边走 */
+      while (root) {
+          if (root.val < p.val) root = root.right;
+          else if (root.val > q.val) root = root.left;
+          else return root;
+      }
+  };
+  ```
+
+2. ##### 二叉搜索树中的插入操作
+
+   输入一个二叉搜索树（`BST`）的根节点`root`和要插入树中的值`value`，将值插入二叉搜索树，返回新的树`root`，保证还是二叉搜索树；这里保证新值和原`BST`中的所有节点值都不相同。
+
+   插入的方式有多种，最直接的应该就是按照大小找，直到找到插入方向子节点为空，就可以插入了
+
+* 递归法，按照根节点值与`value`的比较得到插入方向
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {number} val
+   * @return {TreeNode}
+   */
+  var insertIntoBST = function (root, val) {
+      /* 递归法 */
+      function insertTraversal(node, val) {
+          if (node.val > val) {
+              /* 需要往左走 */
+              if (node.left) insertTraversal(node.left, val);
+              else node.left = new TreeNode(val);/* 如果左节点为空，直接插入 */
+          } else {
+              if (node.right) insertTraversal(node.right, val);
+              else node.right = new TreeNode(val);/* 同样如果右节点为空，插入右 */
+          }
+      }
+  
+      if (!root) return new TreeNode(val);
+      insertTraversal(root, val);
+      return root;
+  };
+  ```
+
+* 递归法二，递归函数返回要插入的父节点
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {number} val
+   * @return {TreeNode}
+   */
+  var insertIntoBST = function (root, val) {
+      /* 递归法，递归函数返回需要插入的父节点 */
+      function insertTraversal(node, val) {
+          if (node.val > val) {
+              return node.left ? insertTraversal(node.left, val) : node;
+          } else {
+              return node.right ? insertTraversal(node.right, val) : node;
+          }
+      }
+  
+      if (!root) return new TreeNode(val);
+      let LastNode = insertTraversal(root, val);/* 得到要插入的父节点 */
+      if (LastNode.val > val) LastNode.left = new TreeNode(val);
+      else LastNode.right = new TreeNode(val);
+      return root;
+  };
+  ```
+
+* 递归法三，通过返回当前节点来完成父子赋值操作
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {number} val
+   * @return {TreeNode}
+   */
+  var insertIntoBST = function (root, val) {
+      /* 递归函数可以通过返回当前节点完成父子赋值的目的 */
+      if (!root) {
+          /* 如果当前节点为空 */
+          return new TreeNode(val);
+      }
+      /* 左右赋值 */
+      if (root.val > val) root.left = insertIntoBST(root.left, val);
+      if (root.val < val) root.right = insertIntoBST(root.right, val);
+  
+      return root;
+  };
+  ```
+
+* 迭代法，同样是找方向，更新`cur`指针，直到下一个方向为空，则插入，并且返回新的根节点
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {number} val
+   * @return {TreeNode}
+   */
+  var insertIntoBST = function (root, val) {
+      /* 迭代法 */
+      if (!root) return new TreeNode(val);
+      let cur = root;
+  
+      while (cur) {
+          if (cur.val > val) {
+              if (cur.left) cur = cur.left;
+              else {
+                  cur.left = new TreeNode(val);
+                  return root;
+              }
+          } else {
+              if (cur.right) cur = cur.right;
+              else {
+                  cur.right = new TreeNode(val);
+                  return root;
+              }
+          }
+      }
+  };
+  ```
+
+3. ##### 删除二叉搜索树中的节点
+
+   给定二叉搜索树的根节点`root`以及一个值`key`，删除`key`对应的节点，并保证仍然返回一个二叉搜索树。
+
+   很明显要删除节点就应该得改变树的结构了，过程如下
+
+   - 首先找到要删除节点的父节点，左子树，右子树（注意要删除的是根结点本身的情况）
+   - 然后将左子树插入右子树，再将得到的右子树赋值给父节点要删除的子节点的指针
+
+* 递归+迭代法如下
+
+  递归法找到父节点，然后通过迭代将左子树插入右子树
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {number} key
+   * @return {TreeNode}
+   */
+  var deleteNode = function (root, key) {
+      /* 递归，拿到删除节点的父节点 */
+      const getParent = (node, key) => {
+          if (!node) return null;/* 如果找到空了，说明没有目标节点 */
+  
+          if (node.val > key) {
+              /* 往左找,找到了说明当前节点是父节点 */
+              if (node.left && node.left.val == key) return node;
+              else return getParent(node.left, key);
+          } else {
+              /* 往右找同理 */
+              if (node.right && node.right.val == key) return node;
+              else return getParent(node.right, key);
+          }
+      }
+  
+      /* 插入方法，将要删除的节点的左子树，插入右子树中 */
+      const insertLeftChild = (leftChild, rightChild) => {
+          /* 反正左子树中的所有值都比右子树小，使劲往左边插就是了 */
+          if (!rightChild) return leftChild;
+  
+          let cur = rightChild;
+          /* 迭代 */
+          while (true) {
+              if (cur.left) cur = cur.left;/* 如果有左节点，继续往下找 */
+              else {
+                  cur.left = leftChild;
+                  return rightChild;
+              }
+          }
+      }
+  
+      if (!root) return null;
+      /* 如果要删除根节点 */
+      if (root.val == key) return insertLeftChild(root.left, root.right);
+  
+      /* 否则得到要删除节点的父节点 */
+      let parent = getParent(root, key);
+      if (!parent) return root;/* 找不到就没有什么好删的 */
+  
+      /* 开始删除 */
+      let leftChild = null, rightChild = null;
+      if (parent.left && parent.left.val == key) {
+          leftChild = parent.left.left;
+          rightChild = parent.left.right;
+          /* 首先将左树插入右树，然后再插到parent上去 */
+          parent.left = insertLeftChild(leftChild, rightChild);
+      } else {
+          /* 右边同理 */
+          leftChild = parent.right.left;
+          rightChild = parent.right.right;
+          parent.right = insertLeftChild(leftChild, rightChild);
+      }
+      return root;
+  };
+  ```
+
+* 递归+递归
+
+  首先递归找到父节点，然后递归将要删除的节点的左子树插入右子树中
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {number} key
+   * @return {TreeNode}
+   */
+  var deleteNode = function (root, key) {
+      /* 将要被删除的节点的左子树插入右子树，返回插入后的结果 */
+      const insertLeftTree = (leftTree, rightTree) => {
+          /* 考虑左树或者右树为空的情况 */
+          if (!rightTree) return leftTree;
+          if (!leftTree) return rightTree;
+  
+          /* 递归找到右子树中的左边空节点来插入 */
+          let cur = rightTree;
+          while (true) {
+              if (!cur.left) {
+                  cur.left = leftTree;
+                  return rightTree;
+              } else cur = cur.left;
+          }
+      }
+  
+      /* 如果为空树 */
+      if (!root) return null;
+      /* 如果要删除的就是根节点 */
+      if (root.val == key) return insertLeftTree(root.left, root.right);
+  
+      /* 开始找要删除的节点 */
+      let cur = root;
+      while (cur) {
+          if (cur.val > key) {
+              /* 往左找 */
+              if (cur.left && cur.left.val == key) {
+                  /* 如果要删除的恰好是左节点 */
+                  /* 得到要删除的节点的左节点和右节点 */
+                  let leftChild = cur.left.left;
+                  let rightChild = cur.left.right;
+                  /* 先将左子树插入右子树，再插入父节点 */
+                  cur.left = insertLeftTree(leftChild, rightChild);
+              } else cur = cur.left;
+          } else {
+              /* 同理往右找 */
+              if (cur.right && cur.right.val == key) {
+                  let leftChild = cur.right.left;
+                  let rightChild = cur.right.right;
+                  cur.right = insertLeftTree(leftChild, rightChild);
+              } else cur = cur.right;
+          }
+      }
+  
+      return root;
+  };
+  ```
+
+* 删除节点，也能通过递归然后返回当前根结点进行父子节点赋值
+
+  这种递归的写法绝对是最简洁的
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {number} key
+   * @return {TreeNode}
+   */
+  var deleteNode = function (root, key) {
+      /* 既然可以通过递归来进行父子赋值添加节点 */
+      /* 那也可以通过递归来进行赋值删除节点 */
+      if (!root) return root;/* 如果遇见了空，就直接返回 */
+      if (root.val == key) {
+          /* 遇见了要删除的节点 */
+          if (!root.right) return root.left;
+          if (!root.left) return root.right;
+          /* 否则就是被删除节点左右均不为空了 */
+          let cur = root.right;
+          /* 迭代，将左子树放到右子树的最底层的左节点的左边 */
+          while (cur.left) cur = cur.left;
+          cur.left = root.left;
+          return root.right;
+      }
+  
+      /* 根据值判断往那边走 */
+      if (root.val > key) root.left = deleteNode(root.left, key);
+      else root.right = deleteNode(root.right, key);
+  
+      /* 返回当前根结点 */
+      return root;
+  };
+  ```
+
+  上面递归调用的那一步，就相当于将新的节点返回给上一层，然后上一层用`root.left`或者`root.right`来接住。
+
+* 迭代的核心应该也要是删除指定节点返回剩下的节点的那个函数，如下，deleteTarget
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {number} key
+   * @return {TreeNode}
+   */
+  var deleteNode = function (root, key) {
+      /* 删除某个节点 */
+      const deleteTarget = target => {
+          /* 保证左右均为非空 */
+          if (!target.right) return target.left;
+          if (!target.left) return target.right;
+  
+          /* 找到右节点的最底层左边位置用于放置左节点 */
+          let cur = target.right;
+          while (cur.left) cur = cur.left;
+          cur.left = target.left;
+          /* 返回右节点 */
+          return target.right;
+      }
+  
+      /* 如果root为空 */
+      if (!root) return root;
+      /* 如果要删除的是root本身 */
+      if (root.val == key) return deleteTarget(root);
+  
+      let parent = root;
+      /* 找到要删除节点的父节点然后删除 */
+      while (parent) {
+          if (parent.val > key) {
+              /* 往左走，遇到了就删掉 */
+              if (parent.left && parent.left.val == key) {
+                  parent.left = deleteTarget(parent.left);
+                  return root;
+              } else parent = parent.left;
+          } else {
+              /* 往右走 */
+              if (parent.right && parent.right.val == key) {
+                  parent.right = deleteTarget(parent.right);
+                  return root;
+              } else parent = parent.right;
+          }
+      }
+  
+      return root;
+  };
+  ```
+
+  
