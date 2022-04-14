@@ -4975,4 +4975,184 @@
   };
   ```
 
+
+#### 2022/04/14
+
+1. ##### 修建二叉搜索树
+
+   给定一个二叉搜索树的根结点`root`，同时给定最小边界`low`和最大边界`high`，通过修建二叉搜索树，要使得所有的节点都在闭区间`[low, high]`中，修建后的树不应该改变相对结构，存在唯一的答案。
+
+   结果返回修剪后的根节点
+
+* 递归，通过递归来实现将修剪后的子树赋值给父节点。而修建的过程也需要借助`BST`的特性，如果当前的节点已经比`low`小，那就只要返回**修建后**的右子树，反之比`high`同理。
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {number} low
+   * @param {number} high
+   * @return {TreeNode}
+   */
+  var trimBST = function (root, low, high) {
+      if (!root) return root;
+  
+      /* 修剪的过程也能通过递归来进行下一层与上一层的赋值 */
+      if (root.val < low) {
+          /* 如果当前根节点，已经超出左边界，返回修建后的右树 */
+          return trimBST(root.right, low, high);
+      } 
+      if (root.val > high) {
+          /* 反之超过右边界 */
+          return trimBST(root.left, low, high);
+      }
+  
+      /* 否则，递归修建左树和右树 */
+      root.left = trimBST(root.left, low, high);
+      root.right = trimBST(root.right, low, high);
+      /* 返回修建后的树 */
+      return root;
+  };
+  ```
+
+* 迭代法，过程分为以下几步，要借助`BST`的特性
+
+  * 首先将`root`移到闭区间`[low, high]`中去
+  * 然后开始修建左子树，左子树只有一种可能，就是小于`low`
+  * 同理修理右子树，找到所有大于`high`的节点，删除该节点以及其右子树
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @param {number} low
+   * @param {number} high
+   * @return {TreeNode}
+   */
+  var trimBST = function (root, low, high) {
+      // 调整根节点root到指定区间内[low, high]，保证返回新的根节点
+      while (true) {
+          if (!root) return root;
+          if (root.val < low) root = root.right;
+          else if (root.val > high) root = root.left;
+          else break;
+      }
+  
+      // 修建左子树
+      let cur = root;
+      while (cur.left) {
+          if (cur.left.val < low) {
+              /* 找到了子孩子小于low的父节点 */
+              cur.left = cur.left.right;
+          } else cur = cur.left;/* 否则继续往左找 */
+      }
+      // 同理修建右子树
+      cur = root;
+      while (cur.right) {
+          if (cur.right.val > high) {
+              cur.right = cur.right.left;
+          } else cur = cur.right;
+      }
+  
+      return root;
+  };
+  ```
+
+2. 将有序数组转换为二叉搜索树
+
+   输入一个升序排列的整数数组`nums`，返回一个高度平衡的二叉搜索树。
+
+   显然可以将数组的中点作为根节点，然后递归构建左右树，就能得到一个高度平衡的二叉搜索树了。
+
+* 递归法，递归函数传入`nums`以及当前要构建树所在区间，即起始点和中点，左闭右开
+
+  ```js
+  /**
+   * @param {number[]} nums
+   * @return {TreeNode}
+   */
+  var sortedArrayToBST = function (nums) {
+      /* 递归构建二叉树的函数，传入数组的起始坐标，左闭右开 */
+      const buildTree = (nums, startIndex, endIndex) => {
+          /* 得到根节点的坐标,注意要以startIndex为基准 */
+          let rootIndex = Math.floor(startIndex + (endIndex - startIndex) / 2);
+          let rootVal = nums[rootIndex];
+          let root = new TreeNode(rootVal);
+          /* 递归构建左右树 */
+          startIndex != rootIndex && (root.left = buildTree(nums, startIndex, rootIndex));
+          rootIndex + 1 != endIndex && (root.right = buildTree(nums, rootIndex + 1, endIndex));
+          return root;
+      }
+  
+      return buildTree(nums, 0, nums.length);
+  };
+  ```
+
+* 同样可以将当前的`nums`中的右树部分以及根节点值`pop`出来，然后递归
+
+  ```js
+  /**
+   * @param {number[]} nums
+   * @return {TreeNode}
+   */
+  var sortedArrayToBST = function (nums) {
+      let rootIndex = Math.floor(nums.length / 2);/* 得到中点索引 */
+      let rootVal = nums[rootIndex];
+  
+      /* 得到右树数组 */
+      let rightTreeNums = [];
+      let curVal;
+      while ((curVal = nums.pop()) != rootVal) {
+          rightTreeNums.push(curVal);
+      }
+  
+      rightTreeNums.reverse();
+  
+      let root = new TreeNode(rootVal);
+      nums.length && (root.left = sortedArrayToBST(nums));
+      rightTreeNums.length && (root.right = sortedArrayToBST(rightTreeNums));
+      return root;
+  };
+  ```
+
+* 迭代法，用一个元素为三元组的数组存储要处理的根节点引用，左右区间，保证左闭右开
+
+  ```js
+  /**
+   * @param {number[]} nums
+   * @return {TreeNode}
+   */
+  var sortedArrayToBST = function (nums) {
+      /* 用堆栈实现，栈中放入当前节点以及在数组的左右起始点,左闭右开 */
+      let resBST = new TreeNode(0);
+      let nodeStack = [[resBST, 0, nums.length]];
+  
+      while (nodeStack.length) {
+          /* 将值拿出来 */
+          let cur = nodeStack.pop();
+          let root = cur[0];
+          let start = cur[1];
+          let end = cur[2];
+  
+          let midIndex = start + Math.floor((end - start) / 2);
+          root.val = nums[midIndex];
+  
+          /* 开始构建左树 */
+          if (midIndex != start) {
+              let leftTree = new TreeNode(0);
+              root.left = leftTree;
+              /* 将左树指针入栈 */
+              nodeStack.push([leftTree, start, midIndex]);
+          }
+  
+          /* 同理右树 */
+          if (midIndex + 1 != end) {
+              let rightTree = new TreeNode(0);
+              root.right = rightTree;
+              nodeStack.push([rightTree, midIndex + 1, end]);
+          }
+      }
+  
+      return resBST;
+  };
+  ```
+
   
