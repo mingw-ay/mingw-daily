@@ -5155,4 +5155,757 @@
   };
   ```
 
+#### 2022/04/15
+
+1. ##### 把二叉搜索树转换为累加树
+
+   输入为二叉搜索树的根节点，该树的节点值各不相同，转化为一个累加树（`Greater Sum Tree`）并且返回, 所谓累加树，就是指每个节点的的新值是原树中大于或等于原值的值的和（意思是包括本身）。
+
+* 递归法一，维护一个全局变量sum，考虑到二叉搜索树的特性，从右往左遍历，就是从大到小遍历
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {TreeNode}
+   */
+  var convertBST = function (root) {
+      /* 按照右中左的顺序进行`中序遍历` */
+      /* 递归方法，传入当前节点,使用全局变量sum */
+      const addUp = (node) => {
+          if (!node) return;
+  
+          /* 先往右走，右边比较大 */
+          addUp(node.right);
+  
+          /* 更新全局变量以及当前节点的值 */
+          sum += node.val;
+          node.val = sum;
+  
+          /* 往左 */
+          addUp(node.left);
+      }
+  
+      let sum = 0;
+      addUp(root);
+      return root;
+  };
+  ```
+
+* 递归法二，在递归的过程中记录前一个遍历到的节点
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {TreeNode}
+   */
+  var convertBST = function (root) {
+      /* 递归法，中序遍历，右中左，使用一个prev指针记录树的前一个节点 */
+      const addUp = cur => {
+          if (!cur) return;
+  
+          /* 往右 */
+          addUp(cur.right);
+  
+          /* 更新当前值 */
+          prev && (cur.val += prev.val);
+          prev = cur;
+  
+          /* 往左 */
+          addUp(cur.left);
+      }
+  
+      let prev = null;
+      addUp(root);
+      return root;
+  };
+  ```
+
+* 迭代，通过堆栈进行模拟从右往左的中序遍历，记录前一个遍历的结点的新值
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {TreeNode}
+   */
+  var convertBST = function (root) {
+      if (!root) return root;
+      /* 使用堆栈模拟中序遍历的过程 */
+      const nodeStack = [];
+      let cur = root;
+      let prev = 0;/* 记录前一个遍历的节点的新值 */
+  
+      while (cur || nodeStack.length) {
+          while (cur) {
+              /* 先一直往右 */
+              nodeStack.push(cur);
+              cur = cur.right;
+          }
+          cur = nodeStack.pop();
+          /* 更新值 */
+          cur.val += prev;
+          prev = cur.val;
+          /* 往左 */
+          cur = cur.left;
+      }
+  
+      return root;
+  };
+  ```
+
+* 不用`while`包`while`也行
+
+  ```js
+  /**
+   * @param {TreeNode} root
+   * @return {TreeNode}
+   */
+  var convertBST = function (root) {
+      if (!root) return root;
+      /* 使用堆栈模拟中序遍历的过程 */
+      const nodeStack = [];
+      let cur = root;
+      let prev = null;/* 记录前一个遍历的节点 */
+  
+      while (cur || nodeStack.length) {
+          if (cur != null) {
+              /* 往右走 */
+              nodeStack.push(cur);
+              cur = cur.right;
+          } else {
+              cur = nodeStack.pop();
+              prev && (cur.val += prev.val);
+              prev = cur;
+              /* 往左走 */
+              cur = cur.left;
+          }
+      }
+  
+      return root;
+  };
+  ```
+
+  刚才出现了一个错误，`cur = nodeStack.pop();`前面一不小心加了一个`let`，导致这个`cur`变量的作用域变为了当前所在的这个块中，一出去，`cur`没有更新成`cur.left`，还是外面的那个`null`。块级作用域的深刻教训。
+
+2. ##### 组合
+
+   输入给定的两个整数`n`和`k`，返回范围`[1，n]`中所有可能的k个数的组合
+
+   显然这是回溯加剪枝的题。
+
+   因为是组合，所以只能往后选，不能往前选，避免重复，而这样就能通过`n`和当前已经选了的长度得到当前层最大能选多少，进行剪枝
+
+* 回溯加剪枝如下：注意边界条件，一旦满了就得返回
+
+  ```js
+  /**
+   * @param {number} n
+   * @param {number} k
+   * @return {number[][]}
+   */
+  var combine = function (n, k) {
+      /* 一个数组，用于存储选择的数字 */
+      let combArr = [];
+      const resArr = [];/* 存储所有结果 */
+  
+      /* 递归函数，传入当前可以选择的最小值 */
+      const selectNum = min => {
+          /* 首先判断当前组合是否有k个了 */
+          if (combArr.length == k) {
+              resArr.push([...combArr]);
+              return;
+          }
+  
+          /* 剪枝，得到能够选择的最大值 */
+          let max = n + 1 + combArr.length - k;
+          /* 在最小值和n之间选择一个数，然后回溯 */
+          for (let i = min; i <= max; i++) {
+              combArr.push(i);
+              selectNum(i + 1);/* 只能往后选 */
+              combArr.pop();/* 回溯 */
+          }
+      }
+  
+      selectNum(1);/* 最开始在区间[1,n]中选 */
+      return resArr;
+  };
+  ```
+
+3. ##### 组合总和Ⅲ
+
+   找出所有相加之和为`n`的`k`个数的组合，满足以下条件
+
+   - 组合选用的范围为`1-9`
+   - 选用数字不重复
+
+   所谓组合，就是顺序不重要
+
+* 使用回溯+剪枝
+
+  * 保证能够选满`k`个
+  * 保证不能选的太大
+
+  ```js
+  /**
+   * @param {number} k
+   * @param {number} n
+   * @return {number[][]}
+   */
+  var combinationSum3 = function (k, n) {
+      let resArr = [];/* 所有组合的数组 */
+      let path = [];/* 全局记录当前组合 */
+  
+      /* 递归进行回溯,带上当前总和以及当前可选的最小数字 */
+      const backTracking = (min, sum) => {
+          /* 如果有k个数了 */
+          if (path.length == k) {
+              sum == n && resArr.push([...path]);/* 满足条件则push进结果 */
+              return;
+          }
+  
+          /* 剪枝，首先根据还需要的大小和9的大小得到max */
+          let max = n - sum > 9 ? 9 : n - sum;
+          for (let i = min; i <= max + 1 + path.length - k; i++) {
+              path.push(i);
+              backTracking(i + 1, sum + i);/* 递归 */
+              path.pop();/* 回溯 */
+          }
+      }
+  
+      backTracking(1, 0);
+      return resArr;
+  };
+  ```
+
+* 优化一下，使用`targetSum`，增加可读性
+
+  ```js
+  /**
+   * @param {number} k
+   * @param {number} n
+   * @return {number[][]}
+   */
+  var combinationSum3 = function (k, n) {
+      let resArr = [];/* 保存结果 */
+      let path = [];/* 全局变量保存当前组合 */
+  
+      /* 回溯方法 */
+      const backTracking = (min, targetSum) => {
+          if (path.length == k) {
+              if (targetSum == 0) resArr.push([...path]);/* 如果找到了，push进结果集 */
+              return;
+          }
+  
+          /* 剪枝 */
+          let max = targetSum > 9 ? 9 : targetSum;/* 保证选的数字不要太大了 */
+          max = max + 1 + path.length - k;/* 保证至少能够选够k个数字 */
+          for (let i = min; i <= 9; i++) {
+              path.push(i);
+              backTracking(i + 1, targetSum - i);/* 递归 */
+              path.pop();/* 回溯 */
+          }
+      }
+  
+      backTracking(1, n);/* 调用递归方法，最开始最小为1，目标和为n */
+      return resArr;
+  };
+  ```
+
+
+#### 2022/04/16
+
+1. ##### 电话号码的字母组合
+
+   给定一个仅包含数字`2-9`的字符串，返回所能表示的字母组合。答案可以按照任意顺序返回。
+
+   数字到字母的映射如下，与电话按键相同，从`2-9`：
+
+   ```js
+   	const charsMap = [['a', 'b', 'c'], ['d', 'e', 'f'], ['g', 'h', 'i'], ['j', 'k', 'l'], ['m', 'n', 'o'], ['p', 'q', 'r', 's'], ['t', 'u', 'v'], ['w', 'x', 'y', 'z']];
+   ```
+
+* 递归，只要传入当前组合即可
+
+  ```js
+  /**
+   * @param {string} digits
+   * @return {string[]}
+   */
+  var letterCombinations = function (digits) {
+      if (!digits) return [];
+      /* 初始化一个二维数组，存储所有的字母 */
+      const charsMap = [['a', 'b', 'c'], ['d', 'e', 'f'], ['g', 'h', 'i'], ['j', 'k', 'l'], ['m', 'n', 'o'], ['p', 'q', 'r', 's'], ['t', 'u', 'v'], ['w', 'x', 'y', 'z']];
+      const len = digits.length;
+      const resArr = [];
+  
+      /* 递归函数，得到当前数字，及当前已经选择了的字母组合 */
+      const getCombinations = (curDigit, path) => {
+          /* 如果已经找完了 */
+          if (!curDigit) {
+              resArr.push(path);
+              return;
+          }
+  
+          /* 选择当前数字对应的所有字母 */
+          let nextDigit = path.length < len - 1 ? digits[path.length + 1] : null;/* 下一个数字 */
+          for (const char of charsMap[curDigit - 2]) {
+              getCombinations(nextDigit, path + char);/* 递归 */
+          }
+      }
+  
+      getCombinations(digits[0], '');/* 开始组合 */
+      return resArr;
+  };
+  ```
+
+* 其实没必要传入一个当前要选择的数字，完全可以通过现在已经选完了的长度得到
+
+  ```js
+  /**
+   * @param {string} digits
+   * @return {string[]}
+   */
+  var letterCombinations = function (digits) {
+      if (!digits) return [];
+      /* 初始化一个二维数组，存储所有的字母 */
+      const charsMap = [['a', 'b', 'c'], ['d', 'e', 'f'], ['g', 'h', 'i'], ['j', 'k', 'l'], ['m', 'n', 'o'], ['p', 'q', 'r', 's'], ['t', 'u', 'v'], ['w', 'x', 'y', 'z']];
+      const len = digits.length;
+      const resArr = [];
+  
+      /* 递归函数，传入当前组合 */
+      const getCombination = path => {
+          if (path.length == len) {
+              resArr.push(path);
+              return;
+          }
+  
+          let curDigit = digits[path.length];
+          for (const char of charsMap[curDigit - 2]) {
+              getCombination(path + char);
+          }
+      }
+  
+      getCombination("");/* 初始化path为空串 */
+      return resArr;
+  };
+  ```
+
+* 通过一个嵌套了两层的`reduce`函数
+
+  ```js
+  /**
+   * @param {string} digits
+   * @return {string[]}
+   */
+  var letterCombinations = function (digits) {
+      if (!digits) return [];
+      /* 初始化一个二维数组，存储所有的字母 */
+      const charsMap = [['a', 'b', 'c'], ['d', 'e', 'f'], ['g', 'h', 'i'], ['j', 'k', 'l'], ['m', 'n', 'o'], ['p', 'q', 'r', 's'], ['t', 'u', 'v'], ['w', 'x', 'y', 'z']];
+  
+      /* 得到给定数字字符串对应的字母二维数组 */
+      let digitsArr = digits.split('').map(digit => charsMap[digit - 2]);
+  
+      let resArr = digitsArr.reduce((prevArr, curArr) => {
+          return curArr.reduce((prev, cur) => {
+              for (const word of prevArr) {
+                  prev.push(word + cur);
+              }
+              return prev;
+          }, [])
+      }, [''])
+  
+      return resArr;
+  };
+  ```
+
+* 优化一下回溯法
+
+  * 首先字符串本身内置了`iterable`，不用特地搞成二维数组
+  * 其次可以使用一个全局的`path`数组，找完了再`join`成一个字符串
+
+  ```js
+  /**
+   * @param {string} digits
+   * @return {string[]}
+   */
+  var letterCombinations = function (digits) {
+      /* 通过一个数组记录选择的组合，最后再放入结果中 */
+      if (!digits) return [];
+      const charsMap = ['abc', 'def', 'ghi', 'jkl', 'mno', 'pqrs', 'tuv', 'wxyz'];
+      const resArr = [];
+      const path = [];/* 全局变量记录选择的组合 */
+      const size = digits.length;/* 得到数字字符串长度 */
+  
+      const getCombination = path => {
+          if (path.length == size) {
+              /* 已经选完了 */
+              resArr.push(path.join(""));
+              return;
+          }
+  
+          /* 否则得到当前的index */
+          let index = digits[path.length] - 2;
+          for (const char of charsMap[index]) {
+              path.push(char);
+              getCombination(path);
+              path.pop();/* 回溯 */
+          }
+      }
+  
+      getCombination(path);
+      return resArr;
+  };
+  ```
+
+2. ##### 组合总和
+
+   输入一个**无重复元素**的证书输入`candidates`和一个目标整数`target`，找出`candidates`中可以使得数组和为`target`的**不同组合**。
+
+   `candidates`的同事和数字可以重复选取。考虑到元素不重复并且得到的组合需要不同，故而在选取的过程中的重复选但是不能回头选。
+
+* 回溯法如下：
+
+  ```js
+  /**
+   * @param {number[]} candidates
+   * @param {number} target
+   * @return {number[][]}
+   */
+  var combinationSum = function (candidates, target) {
+      let resArr = [];
+      let path = [];/* 维护一个全局的选择路径 */
+  
+      /* 回溯选取数字，可以重复选，但不能往回选，故而要带一个startIndex */
+      const getPath = (targetSum, startIndex) => {
+          if (targetSum < 0) return;/* 剪枝 */
+  
+          if (targetSum == 0) {
+              /* 找到了 */
+              resArr.push([...path]);
+              return;
+          }
+  
+          for (let i = startIndex; i < candidates.length; i++) {
+              path.push(candidates[i]);
+              getPath(targetSum - candidates[i], i);/* 递归调用，任然传入i，表示可以重复 */
+              path.pop();
+          }
+      }
+  
+      /* 初始化targetSum为target */
+      getPath(target, 0);
+      return resArr;
+  };
+  ```
+
+
+* 为了进一步剪枝，可以通过首先将`candidates`从小到大排序，一旦选的太大了，就可以跳出循环
+
+  ```js
+  /**
+   * @param {number[]} candidates
+   * @param {number} target
+   * @return {number[][]}
+   */
+  var combinationSum = function (candidates, target) {
+      /* 结果数组如下 */
+      const resArr = [];
+      const path = [];/* 全局变量，维护选取的组合 */
+      let size = candidates.length;
+  
+      /* 首先将candidates升序排列，方便后面剪枝 */
+      candidates.sort((a, b) => a - b);
+  
+      /* 递归函数 */
+      const backTracking = (startIndex, target) => {
+          /* startIndex表示选取起始位置 */
+          if (target == 0) {
+              /* 找到了 */
+              resArr.push([...path]);
+              return;
+          }
+  
+          /* 继续选取 */
+          for (let i = startIndex; i < size; i++) {
+              /* 如果当前数字已经比target要大了，退出循环 */
+              let cur = candidates[i];
+              if (cur > target) {
+                  break;
+              }
+              path.push(cur);
+              backTracking(i, target - cur);/* 传入i而不是i+1表示可以重复选去 */
+              path.pop();/* 回溯 */
+          }
+      }
+  
+      backTracking(0, target);
+      return resArr;
+  };
+  ```
+
+  
+#### 2022/04/17
+
+1. ##### 组合总和Ⅱ
+
+   输入一个候选人编号的集合`candidates`和目标数`target`，找出其中所有和为`target`的组合
+
+   **注意**：
+
+   - `candidates`中可能有重复，但是返回的解集中不能包含重复的数组
+   - `candidates`中的数字不能重复使用
+
+   有点像三数之和或者四数之和，但是这里组合的数字个数并没有给定。故而没办法对最后两个进行双指针选取
+
+* 回溯法，首先得进行排序，并且保证每轮不能选择同样的数字
+
+  ```js
+  /**
+   * @param {number[]} candidates
+   * @param {number} target
+   * @return {number[][]}
+   */
+  var combinationSum2 = function (candidates, target) {
+      /* 要保证不能重复选，首先得先将candidates排序，每一轮不能选取一样的数字 */
+      candidates.sort((a, b) => a - b);
+      const resArr = [];
+      const path = [];
+      const size = candidates.length;
+  
+      /* target每次减去选择的数字 */
+      const backTracking = (startIndex, target) => {
+          /* 找到了 */
+          if (target == 0) {
+              resArr.push([...path]);
+              return;
+          }
+  
+          /* 循环选取 */
+          for (let i = startIndex; i < size; i++) {
+              /* 本轮不能选一样的 */
+              if (i > startIndex && candidates[i] == candidates[i - 1]) {
+                  continue;
+              }
+              let cur = candidates[i];
+              if (target < cur) {
+                  /* 太大了，跳出循环 */
+                  break;
+              }
+              path.push(cur);
+              backTracking(i + 1, target - cur);
+              path.pop();
+          }
+      }
+  
+      backTracking(0, target);
+      return resArr;
+  };
+  ```
+
+  `Leetcode-master`上的理论：
+
+  > 组合问题可以抽象为树形结构，而这里要保证不重复，就是要求同一个数层不能选取之前选过的数字，但是同一个树枝上是可以重复选取的，因为每个单独的树枝都是一种单独的可能性
+
+* 也可以通过一个`used`数组来记录本树枝用过的位置，如果遇得到重复而不是本树枝用过的，说明本轮选取出现重复
+
+  ```js
+  /**
+   * @param {number[]} candidates
+   * @param {number} target
+   * @return {number[][]}
+   */
+  var combinationSum2 = function (candidates, target) {
+      /* 使用一个used数组来记录当前路径用过的数字，保证每一轮没重复选取 */
+      const resArr = [];
+      const path = [];
+      const size = candidates.length;
+      const used = new Array(size).fill(false);
+  
+      /* 首先将候选人编号集合进行升序排列，保证后面去重以及剪枝 */
+      candidates = candidates.sort((a, b) => a - b);
+  
+      /* 递归函数 */
+      const backTracking = (startIndex, target) => {
+          if (target == 0) {
+              /* 找到了 */
+              resArr.push([...path]);
+              return;
+          }
+  
+          for (let i = startIndex; i < size; i++) {
+              if (i > 0 && candidates[i] == candidates[i - 1] && used[i - 1] == false) {
+                  /* 如果重复选取了并且不是本条路径用过的 */
+                  continue;
+              }
+              let cur = candidates[i];
+              if (cur > target) {
+                  /* 当前数字太大了，跳出循环 */
+                  break;
+              }
+              used[i] = true;/* 记录使用过的 */
+              path.push(cur);
+              backTracking(i + 1, target - cur);/* 递归，传入起始点为i+1保证不重复选取 */
+              used[i] = false;
+              path.pop();/* 回溯 */
+          }
+      }
+  
+      backTracking(0, target);
+      return resArr;
+  };
+  ```
+
+* 也可以通过一个`prev`指针记录本轮前一个选取的数字，来去重
+
+  ```js
+  /**
+   * @param {number[]} candidates
+   * @param {number} target
+   * @return {number[][]}
+   */
+  var combinationSum2 = function (candidates, target) {
+      /* 使用一个used数组来记录当前路径用过的数字，保证每一轮没重复选取 */
+      const resArr = [];
+      const path = [];
+      const size = candidates.length;
+      const used = new Array(size).fill(false);
+  
+      /* 首先将候选人编号集合进行升序排列，保证后面去重以及剪枝 */
+      candidates = candidates.sort((a, b) => a - b);
+  
+      /* 递归函数 */
+      const backTracking = (startIndex, target) => {
+          if (target == 0) {
+              /* 找到了 */
+              resArr.push([...path]);
+              return;
+          }
+  
+          let prev = -1;/* 用于记录前一个数字 */
+          for (let i = startIndex; i < size; i++) {
+              let cur = candidates[i];
+  
+              /* 如果出现重复 */
+              if (cur == prev) {
+                  continue;
+              }
+  
+              /* 如果cur太大了 */
+              if (target < cur) {
+                  break;
+              }
+  
+              /* 更新prev */
+              prev = cur;
+              path.push(cur);
+              backTracking(i + 1, target - cur);
+              path.pop();/* 回溯 */
+          }
+      }
+  
+      backTracking(0, target);
+      return resArr;
+  };
+  ```
+
+2. ##### 分割回文串
+
+   输入一个字符串`s`，将`s`分割为一些字串，使得每个子串都是回文串。返回所有的分割方案。
+
+   **回文串**：正着读和反着读都一样的字符串。
+
+* 切割一个字符串其实就是一个组合问题。故而可以作为一个在`[1,s.length]`区间内找所有组合的问题来解决
+
+  ```js
+  /**
+   * @param {string} s
+   * @return {string[][]}
+   */
+  var partition = function (s) {
+      /* 切割问题可以理解为组合问题，不能回头选择切割位置 */
+      /* 字符串的长度就是切割位置的个数 */
+      const resArr = [];
+      const path = [];/* 切割得到的字符串 */
+      const size = s.length;
+  
+      /* 选择起始切割点以及当前字串 */
+      const backTracking = (startIndex, curStr) => {
+          /* startIndex最开始的取值范围为1~size,左右闭区间 */
+          /* 首先判断是否回文 */
+          if (curStr.length > 1) {
+              for (let left = 0, right = curStr.length - 1; left < right; left++, right--) {
+                  if (curStr[left] != curStr[right]) return;
+              }
+          }
+          /* 如果切割完毕，加入结果集 */
+          if (startIndex > size) {
+              resArr.push([...path]);
+              return;
+          }
+  
+          /* 继续选 */
+          for (let i = startIndex; i <= size; i++) {
+              /* 获得字串 */
+              let curStr = s.substr(startIndex - 1, i - startIndex + 1);
+              path.push(curStr);
+              backTracking(i + 1, curStr);
+              path.pop();/* 回溯 */
+          }
+      }
+  
+      backTracking(1, "");/* 开始回溯 */
+      return resArr;
+  };
+  ```
+
+* 可以先判断本次切割的区间是否回文子串再进行回溯
+
+  ```js
+  /**
+   * @param {string} s
+   * @return {string[][]}
+   */
+  var partition = function (s) {
+      /* 切割问题可以理解为组合问题，不能回头选择切割位置 */
+      /* 字符串的长度就是切割位置的个数 */
+      const resArr = [];
+      const path = [];/* 切割得到的字符串 */
+      const size = s.length;
+  
+      /* 判断是否回文串的方法 */
+      const isPalindrome = (str, start, end) => {
+          while (start < end) {
+              if (str[start++] != str[end--]) return false;
+          }
+          return true;
+      }
+  
+      /* 递归方法,传入本次开始切割的位置 */
+      const backTracking = (startIndex, path) => {
+          /* 切割的位置有size个，区间为[0,size-1] */
+          if (startIndex == size) {
+              /* 已经切完了 */
+              resArr.push([...path]);
+              return;
+          }
+  
+          /* 继续切 */
+          for (let i = startIndex; i < size; i++) {
+              /* 首先判断是否回文字串，区间为[startIndex,i] */
+              if (!isPalindrome(s, startIndex, i)) continue;
+              path.push(s.substr(startIndex, i - startIndex + 1));
+              backTracking(i + 1, path);
+              path.pop();
+          }
+      }
+  
+      /* 开始回溯 */
+      backTracking(0, path);
+      return resArr;
+  };
+  ```
+
+  
+
+
+
   
