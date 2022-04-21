@@ -5904,6 +5904,1667 @@
   };
   ```
 
+
+#### 2022/4/18
+
+1. ##### 复原IP地址
+
+   给定一个只包含数字的字符串，用来表示一个IP地址，返回所有可能的**有效IP地址**，所谓有效IP地址需要包含四个整数，每个整数在0到255之间，闭区间，且不能有前导0
+
+   无效IP地址如：`0.011.255.245`、`192.168.1.312`等
+
+* 与上一个字符串切割为回文子串类似，不过这里可以进行更多的选择区域的剪枝，并且还有不能有前导0的限制
+
+  ```js
+  /**
+   * @param {string} s
+   * @return {string[]}
+   */
+  var restoreIpAddresses = function (s) {
+      const resArr = [];
+      const path = [];/* 选择的四个整数 */
+      const len = s.length;
+  
+      /* 回溯函数，传入当前选择起始位置 */
+      const backTracking = (startIndex) => {
+          /* 剪枝 */
+          let remainLen = len - startIndex;
+          let needed = 4 - path.length;
+          if (remainLen > needed * 3 || remainLen < needed * 1) {
+              /* 如果剩余字符太多了或者太少了 */
+              return;
+          }
+          /* 如果满了 */
+          if (path.length == 4) {
+              resArr.push(path.join("."));
+              return;
+          }
+  
+          /* 继续下一轮选择 */
+          /* 如果当前是0，就只能选择0了 */
+          if (s[startIndex] === "0") {
+              path.push("0");
+              backTracking(startIndex + 1);
+              path.pop();
+          } else {
+              /* 否则可以重新选择 */
+              let endIndex = startIndex + 3;
+              if (endIndex > len) {
+                  endIndex = len;
+              }
+              for (let i = startIndex; i < startIndex + 3; i++) {
+                  let cur = s.substr(startIndex, i - startIndex + 1);/* 获得当前整数部分 */
+                  if (parseInt(cur) > 255) {
+                      break;
+                  }
+                  path.push(cur);
+                  backTracking(i + 1);
+                  path.pop();/* 回溯 */
+              }
+          }
+      }
+  
+      backTracking(0);
+      return resArr;
+  };
+  ```
+
+* 在选择的过程中进行剪枝
+
+  包括以下几个部分
+
+  - 如果剩下的太多了，直接`continue`
+  - 如果剩下的不够凑个四个整数，可以`break`
+  - 如果当前选的数字比`255`要大，可以`break`
+  - 如果当前数字的长度大于1但是以0开头，说明无效，`break`
+
+  ```js
+  /**
+   * @param {string} s
+   * @return {string[]}
+   */
+  var restoreIpAddresses = function (s) {
+      const resArr = [];
+      const path = [];/* 分割整数集合 */
+      const len = s.length;
+  
+      const backTracking = (startIndex) => {
+          /* 如果选满了 */
+          if (path.length == 4) {
+              resArr.push(path.join("."));
+              return;
+          }
+  
+          /* 开始选 */
+          let needed = 4 - 1 - path.length;/* 选了这一轮还要选的个数 */
+          for (let i = startIndex; i < len; i++) {
+              let remainLen = len - i - 1;
+              /* 如果选的太少了, 再选一个 */
+              if (remainLen > needed * 3) {
+                  continue;
+              } else if (remainLen < needed * 1) {
+                  /* 如果选的太多了，凑不齐四个整数 */
+                  break;
+              }
+              /* 当前选的字串 */
+              let cur = s.substr(startIndex, i - startIndex + 1);
+              if (parseInt(cur) > 255 || cur.length > 1 && cur[0] == "0") {
+                  /* 选的整数太大了或者不是0但以0开头 */
+                  break;
+              }
+              path.push(cur);
+              backTracking(i + 1);
+              path.pop();
+          }
+      }
+  
+      backTracking(0);
+      return resArr;
+  };
+  ```
+
+* 也可以放弃前两个关于长度的剪枝，直接在顶部判断是否凑够了四个整数并且已经没有可以选的了
+
+  ```js
+  /**
+   * @param {string} s
+   * @return {string[]}
+   */
+  var restoreIpAddresses = function (s) {
+      const resArr = [];
+      const path = [];/* 分割整数集合 */
+      const len = s.length;
+  
+      const backTracking = (startIndex) => {
+          /* 如果选满了 */
+          if (path.length == 4) {
+              if (startIndex == len) {
+                  /* 已经选完了 */
+                  resArr.push(path.join("."));
+              }
+              return;
+          }
+  
+          /* 开始选 */
+          for (let i = startIndex; i < len; i++) {
+              /* 当前选的字串 */
+              let cur = s.substr(startIndex, i - startIndex + 1);
+              if (parseInt(cur) > 255 || cur.length > 1 && cur[0] == "0") {
+                  /* 选的整数太大了或者不是0但以0开头 */
+                  break;
+              }
+              path.push(cur);
+              backTracking(i + 1);
+              path.pop();
+          }
+      }
+  
+      backTracking(0);
+      return resArr;
+  };
+  ```
+
+  本身那样剪枝太过繁琐，直接在上面进行判断反而结果差不多
+
+* 可以选完了第三段之后再判断剩下部分是否合格
+
+  ```js
+  /**
+   * @param {string} s
+   * @return {string[]}
+   */
+  var restoreIpAddresses = function (s) {
+      const resArr = [];
+      const path = [];/* 分割整数集合 */
+      const len = s.length;
+  
+      const backTracking = (startIndex) => {
+          /* 选完了三段之后判断后面那一段是否合格 */
+          if (path.length == 3) {
+              if (startIndex == len) {
+                  /* 如果没有第四段了 */
+                  return;
+              }
+              /* 拿到最后那一段 */
+              let lastStr = s.substring(startIndex);
+              if (parseInt(lastStr) > 255 || (lastStr[0] == "0" && lastStr.length > 1)) {
+                  /* 无效的第四段，大于255或者以0开头 */
+                  return;
+              }
+              path.push(lastStr);
+              resArr.push(path.join("."));
+              path.pop();
+              return;
+          }
+  
+          /* 还没有选完三段 */
+          for (let i = startIndex; i < len; i++) {
+              let cur = s.substring(startIndex, i + 1);
+              /* 判断是否合格 */
+              if (parseInt(cur) > 255 || (cur[0] == "0" && cur.length > 1)) {
+                  break;
+              }
+              path.push(cur);
+              backTracking(i + 1);
+              path.pop();
+          }
+      }
+  
+      backTracking(0);
+      return resArr;
+  };
+  ```
+
+2. ##### 重写数组拍平
+
+   - 传入两个参数，原数组`arr`，以及指定拍平的深度`depth`，默认为1
+   - 返回拍平后的数组
+   - 注意要去除空元素
+
+* 方法一，采用`reduce`函数进行单层拍平，然后对每个数组进行递归处理,`reduce`函数会跳过空元素
+
+  ```js
+  const arr = [1, 2, [3, 4, , [5, 6, [7, 8], 9]], [10, 12]];
+  
+  
+  const reduceFlat = (arr, depth) => {
+      if (depth > 0) {
+          /* 采用reduce进行拍平 */
+          return arr.reduce((prev, cur) => {
+              console.log(cur);
+              /* 如果当前对象是数组递归处理 */
+              return prev.concat(Array.isArray(cur) ? reduceFlat(cur, depth - 1) : cur);
+          }, [])
+      } else {
+          /* 如果不用继续拍平了，直接浅克隆原数组并且返回 */
+          return arr.slice();
+      }
+  }
+  
+  console.log(reduceFlat(arr, Infinity));
+  ```
+
+* 可以使用条件运算符进行简写
+
+  ```js
+  const arr = [1, 2, [3, 4, , [5, 6, [7, 8], 9]], [10, 12]];
+  
+  
+  const reduceFlat = (arr, depth = 1) => {
+      return depth > 0
+          ? arr.reduce((prev, cur) => prev.concat(Array.isArray(cur)
+              ? reduceFlat(cur, depth - 1)
+              : cur), [])
+          : arr.slice();
+  }
+  
+  console.log(reduceFlat(arr, Infinity));
+  ```
+
+* 也可以采用`forEach`来进行当前层遍历，遇到数组判断是否递归，维护一个全局的结果数组
+
+  ```js
+  const arr = [1, 2, [3, 4, , [5, 6, [7, 8], 9]], [10, 12]];
+  
+  /* 采用forEach方法进行遍历，然后遇到数组同样进行递归 */
+  const myFlat = (arr, depth = 1) => {
+      const resArr = [];/* 全局变量 */
+  
+      /* 递归函数 */
+      const flatten = (arr, depth) => {
+          /* forEach函数会自动跳过空值 */
+          arr.forEach(cur => {
+              if (Array.isArray(cur) && depth > 0) {
+                  /* 递归调用 */
+                  flatten(cur, depth - 1);
+              } else {
+                  resArr.push(cur);
+              }
+          })
+      }
+  
+      flatten(arr, depth);
+      return resArr;
+  }
+  
+  console.log(myFlat(arr, Infinity));
+  ```
+
+* 采用`for...of`进行遍历，再`push`的时候注意不能为空
+
+  ```js
+  const arr = [1, 2, [3, 4, , [5, 6, [7, 8], 9]], [10, 12]];
+  
+  /* 采用for...of来遍历数组的话就得自行去除空元素 */
+  const myFlat = (arr, depth = 1) => {
+      const resArr = [];/* 维护全局的结果数组 */
+  
+      const flatten = (arr, depth) => {
+          for (const cur of arr) {
+              if (Array.isArray(cur) && depth > 0) {
+                  /* 递归调用 */
+                  flatten(cur, depth - 1);
+              } else {
+                  cur && resArr.push(cur);
+              }
+          }
+      }
+  
+      flatten(arr, depth);
+      return resArr;
+  }
+  
+  console.log(myFlat(arr, 3));
+  ```
+
+* 使用堆栈模拟递归，不过必须得为每个元素记录当前深度
+
+  ```js
+  const arr = [1, 2, [3, 4, , [5, 6, [7, 8], 9]], [10, 12]];
+  
+  /* 采用堆栈模拟递归，不过需要使用一个二元组，分别记录当前元素以及所在深度 */
+  const stackFlat = (arr, depth = 1) => {
+      const stack = [];
+      const result = [];
+  
+      /* 首先初始化stack，为每个元素标记深度 */
+      for (const cur of arr) {
+          stack.push([cur, depth]);
+      }
+  
+      while (stack.length) {
+          /* 从后往前拍平 */
+          let cur = stack.pop();
+          let curVal = cur[0];
+          let curDepth = cur[1];
+          if (Array.isArray(curVal) && curDepth > 0) {
+              /* 如果深度符合要求 */
+              for (const item of curVal) {
+                  stack.push([item, curDepth - 1]);
+              }
+          } else {
+              /* 保证不为空 */
+              curVal && result.push(curVal);
+          }
+      }
+  
+      return result.reverse();
+  }
+  
+  console.log(stackFlat(arr, 3));
+  ```
+
+* 如果不需要指定深度用堆栈模拟递归也相当方便
+
+  ```js
+  const arr = [1, 2, [3, 4, , [5, 6, [7, 8], 9]], [10, 12]];
+  
+  /* 使用堆栈模拟递归，只要全部拍平即可，不指定深度 */
+  const myFlat = arr => {
+      const result = [];
+      const stack = [...arr];
+  
+      while (stack.length) {
+          /* 栈顶弹出，比shift更块 */
+          let cur = stack.pop();
+  
+          if (Array.isArray(cur)) {
+              /* 拍平 */
+              stack.push(...cur);
+          } else {
+              /* 保证不为空 */
+              cur && result.push(cur);
+          }
+      }
+  
+      return result.reverse();
+  }
+  
+  console.log(myFlat(arr));
+  ```
+
+* 直接递归完全拍平
+
+  ```js
+  const arr = [1, 2, [3, 4, , [5, 6, [7, 8], 9]], [10, 12]];
+  
+  /* 直接递归完全拍平 */
+  const myFlat = arr => {
+      const result = [];
+  
+      const flatten = arr => {
+          /* 遍历每个元素 */
+          for (const cur of arr) {
+              if (Array.isArray(cur)) {
+                  /* 递归 */
+                  flatten(cur);
+              } else {
+                  /* 保证非空 */
+                  cur && result.push(cur);
+              }
+          }
+      }
+  
+      flatten(arr);
+      return result;
+  }
+  
+  console.log(myFlat(arr));
+  ```
+
+* 使用`Generator`来进行递归拍平
+
+  ```js
+  const arr = [1, 2, [3, 4, , [5, 6, [7, 8], 9]], [10, 12]];
+  
+  
+  /* 使用Generator函数递归式地一个一个pop出来 */
+  function* flatten(arr) {
+      for (const item of arr) {
+          if (Array.isArray(item)) {
+              /* 递归调用 */
+              yield* flatten(item);
+          } else {
+              item && (yield item);
+          }
+      }
+  }
+  
+  console.log([...flatten(arr)]);
+  ```
+
+
+3. ##### 复习一下反转链表
+
+   输入单链表的头节点`head`，返回反转后的新的头节点
+
+* 使用一个`prev`指针指向空，`cur`初始化为`head`，然后迭代反转
+
+  ```js
+  /**
+   * @param {ListNode} head
+   * @return {ListNode}
+   */
+  var reverseList = function (head) {
+      /* 初始化前一个结点以及当前结点 */
+      let prev = null;
+      let cur = head;
+  
+      while (cur) {
+          /* 记录以下下一个结点 */
+          let nextNode = cur.next;
+          /* 反转 */
+          cur.next = prev;
+          /* 更新 */
+          prev = cur;
+          cur = nextNode;
+      }
+  
+      /* 前一个结点始终会指向反转后的头节点 */
+      return prev;
+  };
+  ```
+
+* 递归法，把从前往后迭代的过程再用递归写一遍
+
+  ```js
+  /**
+   * @param {ListNode} head
+   * @return {ListNode}
+   */
+  var reverseList = function (head) {
+      const reverse = (prev, cur) => {
+          if (cur == null) {
+              return prev;
+          }
+  
+          /* 反转 */
+          let nextNode = cur.next;
+          cur.next = prev;
+          return reverse(cur, nextNode);
+      }
+  
+      return reverse(null, head);
+  };
+  ```
+
+* 也可以从后往前反转，先拿到尾结点，在从后往前传的过程中返回尾节点
+
+  ```js
+  /**
+   * @param {ListNode} head
+   * @return {ListNode}
+   */
+  var reverseList = function (head) {
+      const reverse = (prev, cur) => {
+          if (cur == null) {
+              return prev;
+          }
+  
+          /* 从后往前翻 */
+          let lastNode = reverse(cur, cur.next);
+          cur.next = prev;
+          return lastNode;
+      }
+  
+      return reverse(null, head);
+  };
+  ```
+
+  
+#### 2022/04/19
+
+1. ##### 两数相加
+
+   给定两个非空的链表`l1,l2`，表示两个非负的整数，这两个数字都是按照逆序存储的。每个结点存储**一位**数字。
+
+   保证两个数字都没有前导0。返回相加后数字的链表。
+
+* 遍历两个链表，直到都为空了为止，注意进位
+
+  ```js
+  /**
+   * @param {ListNode} l1
+   * @param {ListNode} l2
+   * @return {ListNode}
+   */
+  var addTwoNumbers = function (l1, l2) {
+      /* 得到一个新链表 */
+      let dummyNode = new ListNode(0);/* 虚拟头节点 */
+  
+      /* 初始化指针 */
+      let cur1 = l1;
+      let cur2 = l2;
+      let cur3 = dummyNode;
+      let temp = 0;/* 存储进位数字 */
+  
+      /* 遍历，直到没有下一位了 */
+      while (cur1 != null || cur2 != null || temp > 0) {
+          let newNode = new ListNode(0);
+          if (cur1) {
+              newNode.val += cur1.val;
+              cur1 = cur1.next;
+          }
+          if (cur2) {
+              newNode.val += cur2.val;
+              cur2 = cur2.next;
+          }
+          if (temp > 0) {
+              newNode.val += temp;
+              temp = 0;
+          }
+          /* 进位操作 */
+          if (newNode.val >= 10) {
+              temp = 1;
+              newNode.val -= 10;
+          }
+          cur3.next = newNode;
+          cur3 = newNode;
+      }
+  
+      return dummyNode.next;
+  };
+  ```
+
+* 在`l1`上进行加操作，返回`l1`
+
+  ```js
+  /**
+   * @param {ListNode} l1
+   * @param {ListNode} l2
+   * @return {ListNode}
+   */
+  var addTwoNumbers = function (l1, l2) {
+      /* 在l1的基础上进行相加操作 */
+      let dummyNode = new ListNode(0, l1);/* l1的虚拟头节点 */
+      let prev = dummyNode;/* 记录前一个结点 */
+      let cur1 = l1;
+      let cur2 = l2;
+      let carry = 0;/* 进位 */
+  
+      while (cur1 != null && cur2 != null) {
+          /* 相加 */
+          cur1.val = cur1.val + cur2.val + carry;
+          carry = 0;
+          /* 进位 */
+          if (cur1.val > 9) {
+              cur1.val -= 10;
+              carry = 1;
+          }
+          /* 指向下一个 */
+          prev = cur1;
+          cur1 = cur1.next;
+          cur2 = cur2.next;
+      }
+  
+      /* 如果是l2比较长的话，将cur1指向l2 */
+      if (cur2 != null) {
+          prev.next = cur2;
+          cur1 = cur2;
+      }
+  
+  
+      while (cur1 != null && carry != 0) {
+          /* 如果后面还有一段并且需要进位 */
+          cur1.val += carry;
+          carry = 0;
+          if (cur1.val > 9) {
+              cur1.val -= 10;
+              carry = 1;
+          }
+          prev = cur1;
+          cur1 = cur1.next;
+      }
+  
+  
+      /* 如果cur1已经为空并且还需要进位 */
+      if (cur1 == null && carry > 0) {
+          let newNode = new ListNode(carry);
+          prev.next = newNode;
+      }
+  
+      return dummyNode.next;
+  };
+  ```
+
+  相对麻烦一点
+
+2. 将数字翻译成字符串
+
+   输入一个数字`num`，按照规则将其翻译为字符串，判断一个数字有多少种不同的翻译方法。
+
+* 主要是找出规律函数，然后即可通过迭代或者递归通过前两个字串的翻译方法个数算出当前字串的翻译方法个数
+
+  ```js
+  /**
+   * @param {number} num
+   * @return {number}
+   */
+  var translateNum = function (num) {
+      num = num.toString();
+      const len = num.length;
+      if (len < 2) {
+          /* 如果只有两个数字 */
+          if (parseInt(num) > 9 && parseInt(num) < 26) {
+              return 2;
+          } else {
+              return 1;
+          }
+      }
+      /* 一个数组，记录长度从1到len的字串的翻译方法 */
+      const resArr = [];
+      resArr.push(1);/* 长度为一的字串翻译方法为1 */
+      let cur = num.substring(0, 2);/* 拿到长度为2的字串 */
+      if (parseInt(cur) > 25 || parseInt(cur) < 10) {
+          resArr.push(1);
+      } else {
+          resArr.push(2);
+      }
+  
+      /* 按照规律从3开始的字串的翻译方法个数可以从前两个算出来 */
+      for (let i = 2; i < len; i++) {
+          cur = num.substring(i - 1, i + 1);/* 拿到当前字串最后两个数字 */
+          if (parseInt(cur) > 25 || parseInt(cur) < 10) {
+              /* 说明最后两个数字不能合在一起翻译 */
+              resArr.push(resArr[i - 1]);
+          } else {
+              /* 如果最后两个数字能合在一起，翻译方法可以加上倒数第二个字符串的数量 */
+              resArr.push(resArr[i - 1] + resArr[i - 2]);
+          }
+      }
+  
+      return resArr.pop();
+  };
+  ```
+
+3. ##### 从数据中构建树形结构
+
+   从数据中根据`parentId`和`id`之间的关系构建一个多叉树，可能有多个顶级的结点
+
+   ```json
+   [ 
+   { id: 'R1', parentId: null }, 
+   { id: 'R2', parentId: null }, 
+   { id: 'R1-1', parentId: 'R1' }, 
+   { id: 'R1-2', parentId: 'R1' }, 
+   { id: 'R1-3', parentId: 'R1' }, 
+   { id: 'R2-1', parentId: 'R2' }, 
+   { id: 'R2-2', parentId: 'R2' }, 
+   { id: 'R1-1-1', parentId: 'R1-3' } 
+   ] 
+   ```
+
+* 方法一，迭代，首先找出顶级结点，然后构建树结构，递归查找`children`
+
+  ```js
+  arr = [
+      { id: "R1", parentId: null },
+      { id: "R2", parentId: null },
+      { id: "R1-1", parentId: "R1" },
+      { id: "R1-2", parentId: "R1" },
+      { id: "R1-3", parentId: "R1" },
+      { id: "R2-1", parentId: "R2" },
+      { id: "R2-2", parentId: "R2" },
+      { id: "R1-1-1", parentId: "R1-3" },
+  ];
+  
+  /* 多叉树的构造函数 */
+  const TreeNode = function (id, parentId, children) {
+      this.id = id === undefined ? "" : id;
+      this.parentId = parentId === undefined ? null : parentId;
+      this.children = children === undefined ? [] : children;
+  };
+  function toTree(arr) {
+      /* 结果数组，包括多个树型结构 */
+      const result = [];
+  
+      /* 递归函数，根据当前id找出其孩子结点 */
+      const getChildren = (parentId) => {
+          const children = [];
+          for (const node of arr) {
+              if (node.parentId === parentId) {
+                  let child = new TreeNode(
+                      node.id,
+                      parentId,
+                      getChildren(node.id)
+                  );
+                  children.push(child);
+              }
+          }
+          return children;
+      };
+  
+      /* 找到顶层结点，即parentId为null的结点 */
+      for (const node of arr) {
+          if (node.parentId === null) {
+              /* 递归调用 */
+              let parent = new TreeNode(
+                  node.id,
+                  node.parentId,
+                  getChildren(node.id)
+              );
+              result.push(parent);
+          }
+      }
+  
+      return result;
+  }
+  
+  console.log(toTree(arr));
+  
+  ```
+
+* 通过Map来存储所有的节点，然后遍历所有节点，找到父节点并且`push`进它的`children`里，注意`parentId`为空的情况
+
+  ```js
+  arr = [
+      { id: "R1", parentId: null },
+      { id: "R2", parentId: null },
+      { id: "R1-1", parentId: "R1" },
+      { id: "R1-2", parentId: "R1" },
+      { id: "R1-3", parentId: "R1" },
+      { id: "R2-1", parentId: "R2" },
+      { id: "R2-2", parentId: "R2" },
+      { id: "R1-1-1", parentId: "R1-3" },
+  ];
+  
+  /* 多叉树的构造函数 */
+  const TreeNode = function (id, parentId, children) {
+      this.id = id === undefined ? "" : id;
+      this.parentId = parentId === undefined ? null : parentId;
+      this.children = children === undefined ? [] : children;
+  };
+  
+  /* 借助Map来按照id首先存储每个结点，然后遍历一遍找到每个结点对应的parent节点 */
+  /* 以时间换空间 */
+  const toTree = function (arr) {
+      const nodeMap = new Map(); /* 存储所有结点的map */
+      const result = []; /* 存储所有的顶级结点 */
+  
+      /* 首先遍历一遍，将所有结点变为树，并且找出没有父节点的结点 */
+      for (const node of arr) {
+          let newNode = new TreeNode(node.id, node.parentId, []);
+          nodeMap.set(newNode.id, newNode);
+          /* 如果是顶级结点，先放入result */
+          if (newNode.parentId === null) {
+              result.push(newNode);
+          }
+      }
+  
+      /* 开始遍历，通过parentId从map中得到父节点 */
+      for (const newNode of nodeMap.values()) {
+          let parentId = newNode.parentId;
+          if (parentId != null) {
+              let parent = nodeMap.get(parentId);
+              parent.children.push(newNode);
+          }
+      }
+  
+      return result;
+  };
+  
+  console.log(toTree(arr));
+  ```
+
+* 使用两个方法进行两次遍历，得到最终的结果集
+
+  ```js
+  arr = [
+      { id: "R1", parentId: null },
+      { id: "R2", parentId: null },
+      { id: "R1-1", parentId: "R1" },
+      { id: "R1-2", parentId: "R1" },
+      { id: "R1-3", parentId: "R1" },
+      { id: "R2-1", parentId: "R2" },
+      { id: "R2-2", parentId: "R2" },
+      { id: "R1-1-1", parentId: "R1-3" },
+  ];
+  
+  /* 多叉树的构造函数 */
+  const TreeNode = function (id, parentId, children) {
+      this.id = id === undefined ? "" : id;
+      this.parentId = parentId === undefined ? null : parentId;
+      this.children = children === undefined ? [] : children;
+  };
+  
+  /* 同样使用Map来进行查找 */
+  const toTree = (arr) => {
+      const nodeMap = new Map();
+      const result = []; /* 存储最终的所有树 */
+  
+      /* 首先将arr每个元素转为TreeNode并放入Map中 */
+      arr.map((node) => {
+          let newNode = new TreeNode(node.id, node.parentId);
+          nodeMap.set(newNode.id, newNode);
+          return newNode;
+      }).forEach((node) => {
+          /* 遍历一遍所有节点，找到父节点或者放入结果集 */
+          if (node.parentId === null) {
+              result.push(node);
+          } else {
+              let parent = nodeMap.get(node.parentId);
+              parent.children.push(node);
+          }
+      });
+  
+      return result;
+  };
+  
+  console.log(toTree(arr));
+  ```
+
+4. 子集
+
+   给定一个整数数组`nums`，里面的元素互不相同，返回该数组所有可能的自己组成的集合，即幂集。
+
+   要求不能包含重复的子集，意思是不能**回头选**也不能**重复选**
+
+* 一层一层地向后选择路径，并且回溯，每一层不能往回选
+
+  ```js
+  /**
+   * @param {number[]} nums
+   * @return {number[][]}
+   */
+  var subsets = function (nums) {
+      const result = [];/* 解集 */
+      const path = [];/* 回溯过程中选择的路径 */
+      const size = nums.length;
+      /* 由于数组nums中的元素互不相同，故而可以直接往后一轮一轮地选 */
+      const backTracking = startIndex => {
+          /* 将当前子集加入解集 */
+          result.push([...path]);
+  
+          /* 只能往后选 */
+          for (let i = startIndex; i < size; i++) {
+              path.push(nums[i]);
+              backTracking(i + 1);/* 递归 */
+              path.pop();/* 回溯 */
+          }
+      }
+  
+      backTracking(0);/* 开始回溯 */
+      return result;
+  };
+  ```
+
+  将回溯的过程看作一个树形结构，求所有可能的子集的集合/求幂集，的意思就是收集树形结构里的每一个节点的路径`path`。而一般的组合问题或者分割问题都是收集的满足一定条件的叶子节点。
+
+5. ##### 图片懒加载
+
+   保证页面加载过程中不卡顿，减少首屏时间就不能一开始就加载所有图片。懒加载就是只有当图片处于当前视窗中才开始加载。故而一开始给图片一个本地图片的`src`，真实的图片地址存放在`data-src`中，一旦发现图片在视窗之中了，则改为正确的地址。
+
+   包括以下几步：
+
+   - 节流函数，因为要监控窗口滚动，然后计算所有图片位置，故而当用户持续滚动时必须减少函数触发频率
+   - 计算图片位置的函数，通过使用`getBoundingClientRect()`方法得到距离视窗顶部的`offset`，然后和视窗大小进行比较。
+
+   ```js
+   /* 节流函数 */
+   const throttle = function (fn, delay) {
+       /* 维护一个timer以及开始时间 */
+       let startTime = new Date();
+       let timer;
+   
+       return function () {
+           let curTime = new Date();
+           clearTimeout(timer);
+           /* 获得剩余时间 */
+           remainTime = delay - (curTime - startTime);
+           const context = this;
+           const args = [...arguments];
+           /* 如果时间已经够了，直接执行 */
+           if (remainTime < 0) {
+               fn.apply(context, ...args);
+               /* 更新时间 */
+               startTime = curTime;
+           } else {
+               /* 否则，重新计时 */
+               timer = setTimeout(() => {
+                   fn.apply(context, ...args);
+                   startTime = new Date();
+               }, remainTime);
+           }
+       };
+   };
+   
+   /* 监控所有的图片，一旦出现在视窗中，就调用修改src属性加载图片 */
+   const picEls = document.querySelectorAll("img"); /* 得到所有的图片 */
+   const loadPicture = function () {
+       /* 监控窗口滚动 */
+       let windowHeight =
+           window.innerHeight ||
+           document.documentElement.clientHeight; /* 窗口高度,兼容 */
+       for (const pic of picEls) {
+           let offsetToTop = pic.getBoundingClientRect().top;
+           if (windowHeight - offsetToTop > 0) {
+               /* 如果已经在视窗内了，加载 */
+               pic.src = pic.getAttribute("data-src");
+           }
+       }
+   };
+   
+   /* 窗口最开始加载的时候执行一次 */
+   window.onload = loadPicture;
+   /* 监控窗口滚动，并且进行节流操作 */
+   window.addEventListener("scroll", throttle(loadPicture, 600));
+   ```
+
+
+6. ##### 大数相加
+
+   输入两个字符串形式的非负整数`num1`和`num2`。计算他们的和并且同样以字符串的形式返回。
+
+   不能将输入的字符串转为整数形式，也不能用`BigInt`类型操作。
+
+* 方法一，按照索引从后往前遍历相加，push进一个数组，注意进位，最后再将数组逆转过来
+
+  ```js
+  /**
+   * @param {string} num1
+   * @param {string} num2
+   * @return {string}
+   */
+  var addStrings = function (num1, num2) {
+      /* 使用一个数组存储按照相加后的结果按照逆序存放的结果 */
+      const result = [];
+      /* 得到两个数字的长度 */
+      let len1 = num1.length - 1;
+      let len2 = num2.length - 1;
+      let carry = 0;/* 进位 */
+  
+      /* 从后往前遍历两个数字 */
+      for (; len1 >= 0 || len2 >= 0 || carry > 0; len1--, len2--) {
+          let count = carry;
+          /* 从后往前加,注意要转为整数 */
+          if (len1 >= 0) {
+              count += parseInt(num1[len1]);
+          }
+          if (len2 >= 0) {
+              count += parseInt(num2[len2]);
+          }
+          /* 进位 */
+          if (count > 9) {
+              count -= 10;
+              carry = 1;
+          } else {
+              carry = 0;
+          }
+  
+          result.push(count);
+      }
+  
+      return result.reverse().join("");
+  };
+  ```
+
+* 采用堆栈存储两个数字
+
+  ```js
+  /**
+   * @param {string} num1
+   * @param {string} num2
+   * @return {string}
+   */
+  var addStrings = function (num1, num2) {
+      /* 采用两个堆栈存储两个数组 */
+      const stack1 = num1.split("");
+      const stack2 = num2.split("");
+      const result = [];
+      let carry = 0;/* 进位 */
+  
+      while (stack1.length || stack2.length || carry > 0) {
+          let firstNum = stack1.length ? stack1.pop() : 0;
+          let secondNum = stack2.length ? stack2.pop() : 0;
+          let count = parseInt(firstNum) + parseInt(secondNum) + carry;
+  
+          /* 进位 */
+          if (count > 9) {
+              count -= 10;
+              carry = 1;
+          } else {
+              carry = 0;
+          }
+  
+          result.push(count);
+      }
+  
+      return result.reverse().join("");
+  };
+  ```
+
+  
+#### 2022/04/20
+
+1. ##### 无重复字符的最长字串
+
+   输入一个字符串`s`，找出其中不含重复字符的**最长字串**的长度。
+
+   由于这里是字串而不是子序列，故而是一个快慢双指针滑窗的问题，而不是动态规划。
+
+* 双指针，首先快指针`fast`先走，直到出现重复，更新最大长度后然后慢指针`slow`再右移。注意要使用一个`Set`记录当前字串中已经出现过的字符。
+
+  ```js
+  /**
+   * @param {string} s
+   * @return {number}
+   */
+  var lengthOfLongestSubstring = function (s) {
+      const charSet = new Set();/* 记录当前字串的长度 */
+      let maxLength = 0;/* 初始化最长的长度 */
+      const len = s.length;
+      let slow = 0, fast = 0;/* 初始化快慢指针 */
+  
+      while (slow <= fast && fast < len) {
+          while (fast < len && !charSet.has(s[fast])) {
+              /* 直到到了末尾或者已经出现重复 */
+              charSet.add(s[fast]);
+              fast++;
+          }
+  
+          /* 更新最长长度 */
+          if (fast - slow > maxLength) {
+              maxLength = fast - slow;
+          }
+  
+          /* 往右走直到fast已经不包含在Set里了 */
+          while (fast < len && charSet.has(s[fast])) {
+              charSet.delete(s[slow]);
+              slow++;
+          }
+      }
+  
+      return maxLength;
+  };
+  ```
+
+* 也可以使用一个对象存储当前每个字符上次出现的位置，用于遍历字符串然后决定区间起点
+
+  ```js
+  /**
+   * @param {string} s
+   * @return {number}
+   */
+  var lengthOfLongestSubstring = function (s) {
+      /* 使用一个对象记录以下每一个字符最近一次出现的位置 */
+      const last = {};
+      let maxLength = 0;
+      let len = s.length;
+      let start = 0;/* 字串起点 */
+  
+      /* 遍历整个字符串 */
+      for (let i = 0; i < len; i++) {
+          let char = s[i];
+          /* 上一次出现的位置的下一个位置 */
+          let lastIndex = last.hasOwnProperty(char) ? last[char] + 1 : 0;
+          if (lastIndex > start) {
+              /* 如果在当前字串中出现的，更新起始区间 */
+              start = lastIndex;
+          }
+          /* 更新最长不重复字串长度 */
+          let curLength = i - start + 1;/* 当前新的字串长度 */
+          if (curLength > maxLength) {
+              maxLength = curLength;
+          }
+          /* 更新当前字符出现位置 */
+          last[char] = i;
+      }
+  
+      return maxLength;
+  };
+  ```
+
+2. ##### 子集Ⅱ
+
+   输入一个整数数组`nums`，其中可能包含重复元素，返回所有可能的子集（幂集）。
+
+   和上一题**子集**差不多，回溯的过程需要找到基本上所有节点，但是不能包含重复的子集，意味着加入抽象为一棵树，同层不能选取一样的数字。故而首先得排序
+
+* 要保证同层不重复选取，故而每层要从`startIndex+1`保证和前一个选的不一样
+
+  ```js
+  /**
+   * @param {number[]} nums
+   * @return {number[][]}
+   */
+  var subsetsWithDup = function (nums) {
+      const result = [];/* 结果 */
+      const path = [];/* 维护一个选择路径 */
+      const len = nums.length;
+      nums.sort((a, b) => a - b);/* 升序排列 */
+  
+      /* 去重的过程同样需要先排序，然后保证同层选取是不重复 */
+      const backTracking = function (startIndex) {
+          /* 传入当前层开始选择的起点 */
+          result.push([...path]);/* 加入当前子集 */
+  
+          /* 开始当前层选择 */
+          for (let i = startIndex; i < len; i++) {
+              /* 避免同层重复 */
+              if (i > startIndex && nums[i] == nums[i - 1]) {
+                  continue;
+              }
+  
+              path.push(nums[i]);
+              backTracking(i + 1);/* 递归 */
+              path.pop();/* 回溯 */
+          }
+      }
+  
+      backTracking(0);/* 初始化回溯 */
+      return result;
+  };
+  ```
+
+* 同样可以记录同一层上一个选择的数字，保证不重复选取
+
+  ```js
+  /**
+   * @param {number[]} nums
+   * @return {number[][]}
+   */
+  var subsetsWithDup = function (nums) {
+      const result = [];/* 结果 */
+      const path = [];/* 维护一个选择路径 */
+      const len = nums.length;
+      nums.sort((a, b) => a - b);/* 升序排列 */
+  
+      /* 通过一个prev节点记录每一层的前一个结点，由于nums[i] >= 10,故而初始化为-11 */
+      const backTracking = startIndex => {
+          result.push([...path]);/* 加入当前路径 */
+  
+          let prev = -11;/* 初始化同层上一个选择的 */
+          for (let i = startIndex; i < len; i++) {
+              let cur = nums[i];
+              if (prev == cur) {
+                  continue;/* 跳过重复 */
+              }
+              prev = cur;
+              path.push(cur);
+              backTracking(i + 1);
+              path.pop();/* 回溯 */
+          }
+      }
+  
+  
+      backTracking(0);/* 初始化回溯 */
+      return result;
+  };
+  ```
+
+* 也可以先排序，然后在每一层选择的时候使用一个set存储选过的来进行去重
+
+  ```js
+  /**
+   * @param {number[]} nums
+   * @return {number[][]}
+   */
+  var subsetsWithDup = function (nums) {
+      /* 使用set来使用每一层选择的时候去重 */
+      const result = [];
+      const path = [];/* 两个全局数组，维护结果集以及选择路径 */
+      nums.sort((a, b) => a - b);/* 但凡是去重都得要排序 */
+      const len = nums.length;/* 得到长度 */
+  
+      const backTracking = function (startIndex) {
+          result.push([...path]);
+  
+          /* 使用一个set过滤掉当前层中的重复元素 */
+          const numsSet = new Set();
+  
+          for (let i = startIndex; i < len; i++) {
+              let cur = nums[i];
+              if (numsSet.has(cur)) {
+                  /* 去重 */
+                  continue;
+              }
+              numsSet.add(cur);
+              path.push(cur);
+              backTracking(i + 1);
+              path.pop();/* 回溯 */
+          }
+      }
+  
+      backTracking(0);
+      return result;
+  };
+  ```
+
+* 使用一个`used`函数记录当前选取路径
+
+  ```js
+  /**
+   * @param {number[]} nums
+   * @return {number[][]}
+   */
+  var subsetsWithDup = function (nums) {
+      /* 使用一个used函数记录每个树枝选择的情况 */
+      const result = [];
+      const path = [];
+      const len = nums.length;
+      nums.sort((a, b) => a - b);
+      const used = new Array(len).fill(false);
+  
+      const backTracking = function (startIndex) {
+          result.push([...path]);
+  
+          /* 开始当前层选择 */
+          for (let i = startIndex; i < len; i++) {
+              if (i > 0 && nums[i] == nums[i - 1] && used[i - 1] == false) {
+                  /* 去除同层重复选取 */
+                  continue;
+              }
+              path.push(nums[i]);
+              used[i] = true;
+              backTracking(i + 1);
+              used[i] = false;
+              path.pop();/* 回溯 */
+          }
+      }
+  
+      backTracking(0);/* 开始回溯 */
+      return result;
+  };
+  ```
+
+
+3. ##### 递增子序列
+
+   输入一个整数数组`nums`，这个数组可能含有重复元素，找出数组中**不同**的递增子序列，要求**至少有两个元素**，允许子序列相邻整数相等
+
+* 使用一个`Set`对象存储所有的路径，使用空格为分界的字符串来存储路径。
+
+  因为以下方法借助了`Set`，同时需要对存入的每个数组进行`join`操作，返回的又必须是数组形式的子序列
+
+  ```js
+  /**
+   * @param {number[]} nums
+   * @return {number[][]}
+   */
+  var findSubsequences = function (nums) {
+      /* 从前往后选除子序列，选择的时候进行剪枝，不能回头选 */
+      const result = new Set();/* 结果集存储选择的字符串，以空格隔开，Set保证不重复 */
+      const path = [];/* 全局的选择数组以及结果集 */
+      const len = nums.length;
+  
+      const backTracking = function (startIndex) {
+          if (path.length > 1) {
+              /* 将路径转为字符串放入Set中 */
+              result.add(path.join(" "));
+          }
+  
+          let last = path[path.length - 1];/* 得到路径中的最后一个 */
+          for (let i = startIndex; i < len; i++) {
+              let cur = nums[i];
+              if (cur < last) {
+                  continue;/* 直到递增位置，可以相同 */
+              }
+              path.push(cur);
+              backTracking(i + 1);
+              path.pop();/* 回溯 */
+          }
+      }
+  
+      backTracking(0);
+      return [...result].map(path => path.split(" "));
+  };
+  ```
+
+* 以下使用一个单独的数组存储不重复的路径，避免后续又得将字符串形式的路径转为数组
+
+  ```js
+  /**
+   * @param {number[]} nums
+   * @return {number[][]}
+   */
+  var findSubsequences = function (nums) {
+      /* 从前往后选除子序列，选择的时候进行剪枝，不能回头选 */
+      const pathSet = new Set();/* 结果集存储选择的字符串，以空格隔开，Set保证不重复 */
+      const result = [];/* 存储所有不重复的子序列 */
+      const path = [];/* 全局的选择数组以及结果集 */
+      const len = nums.length;
+  
+  
+      /* 递归函数，传入本轮选择起始点以及上一轮选择的数字 */
+      const backTracking = function (startIndex, last) {
+          if (path.length > 1) {
+              /* 如果至少又两个元素 */
+              let pathStr = path.join(" ");
+              if (!pathSet.has(pathStr)) {
+                  /* 还没有找到过相同路径 */
+                  pathSet.add(pathStr);
+                  result.push([...path]);
+              }
+          }
+  
+          /* 开始本轮选择 */
+          for (let i = startIndex; i < len; i++) {
+              let cur = nums[i];
+              /* 如果比上一个小 */
+              if (cur < last) {
+                  continue;
+              }
+              path.push(cur);
+              backTracking(i + 1, cur);
+              path.pop();
+          }
+      }
+  
+      backTracking(0, -101);/* 开始回溯，上一个初始化为-101，最小的可能性 */
+      return result;
+  };
+  ```
+
+* 可以通过每一层不重复选取来达到剪枝的效果，就不用使用一个全局的`Set`来判断子序列是否重复了。这里并不需要先排序，因为要判断的条件就是是否有序
+
+  ```js
+  /**
+   * @param {number[]} nums
+   * @return {number[][]}
+   */
+  var findSubsequences = function (nums) {
+      /* 保证每一层不选取同样的数字来达到去重的目的 */
+      /* 因为但凡后面出现的相同数字可以找到的递增子序列，前面也能 */
+      /* 所以在每一轮中使用一个Set来保证不重复选取 */
+      /* 一般来说要去重还是得先排序，但是由于本来就要求得到递增的子序列，去掉了一些重复组合 */
+      const result = [];/* 结果集 */
+      const path = [];/* 回溯使用的选择数组 */
+      const len = nums.length;
+  
+      const backTracking = function (startIndex, last) {
+          if (path.length > 1) {
+              result.push([...path]);
+          }
+  
+          const numsSet = new Set();/* 一个Set保证本轮不重复选择 */
+          /* 开始选择 */
+          for (let i = startIndex; i < len; i++) {
+              let cur = nums[i];
+              if (numsSet.has(cur) || cur < last) {
+                  /* 剪枝 */
+                  continue;
+              }
+              path.push(cur);
+              numsSet.add(cur);
+              backTracking(i + 1, cur);
+              path.pop();/* 回溯 */
+          }
+      }
+  
+      backTracking(0, -101);/* 初始化数组末尾，由于范围在+-100之间 */
+      return result;
+  };
+  ```
+
+* 使用一个数组来作为哈希表，判断数字是否重复出现，由于`JavaScript`的数组大小是可以之间通过`length`或者直接索引赋值操作来改变的，所以只要初始化为空数组即可，后面去重的时候判断是否出现会，没有定义的会是`undefined`或者`empty`，反正不会是`true`。
+
+  ```js
+  /**
+   * @param {number[]} nums
+   * @return {number[][]}
+   */
+  var findSubsequences = function (nums) {
+      const result = [];/* 结果集 */
+      const path = [];/* 回溯使用的选择数组 */
+      const len = nums.length;
+  
+      /* 由于给定了元素的范围，其实可以使用数组来作为Set使用 */
+      const backTracking = function (startIndex, last) {
+          if (path.length > 1) {
+              result.push([...path]);
+          }
+  
+          /* 使用一个数组来记录数字是否重复 */
+          const numsArr = [];
+          /* 开始选择 */
+          for (let i = startIndex; i < len; i++) {
+              let cur = nums[i];
+              if (cur < last || numsArr[cur + 100] == true) {
+                  /* 剪枝 */
+                  continue;
+              }
+              numsArr[cur + 100] = true;
+              path.push(cur);
+              backTracking(i + 1, cur);
+              path.pop();/* 回溯 */
+          }
+      }
+  
+      backTracking(0, -101);/* 初始化数组末尾，由于范围在+-100之间 */
+      return result;
+  };
+  ```
+
+
+#### 2022/04/21
+
+1. ##### 全排列
+
+   输入一个不含重复数字的数组`nums`，返回其所有可能的全排列。
+
+   由于数组`nums`不重复，故而可以将选择的数组`path`作为一个`Set`来存储，保证不重复选择即可，并且`JavaScript`的`Set`默认保存存入的顺序，没有`unorderd-set`这个选项
+
+   ```js
+   /**
+    * @param {number[]} nums
+    * @return {number[][]}
+    */
+   var permute = function (nums) {
+       /* 由于nums不含重复，故而可以使用一个Set来存储当前的路径 */
+       const result = [];/* 结果集 */
+       const pathSet = new Set();/* 全局变量维护选择的结果 */
+       const len = nums.length;
+   
+       const backTracking = function () {
+           if (pathSet.size == len) {
+               /* 找到了 */
+               result.push([...pathSet]);
+               return;
+           }
+   
+           /* 开始本轮选择 */
+           for (let i = 0; i < len; i++) {
+               let cur = nums[i];
+               /* 判断是否选过了 */
+               if (pathSet.has(cur)) {
+                   continue;
+               }
+               pathSet.add(cur);
+               backTracking();
+               pathSet.delete(cur);
+           }
+       }
+   
+       backTracking();
+       return result;
+   };
+   ```
+
+* 使用一个单独的`used`数组来记录选择轨迹，当作一个`HashSet`来使用
+
+  ```js
+  /**
+   * @param {number[]} nums
+   * @return {number[][]}
+   */
+  var permute = function (nums) {
+      /* 也可以使用一个used数组，记录当前选择了那些，保证不重复 */
+      const result = [];/* 全排列解集 */
+      const path = [];/* 记录选择 */
+      const used = [];/* 创建数组记录以下nums的使用轨迹 */
+      const len = nums.length;
+  
+      const backTracking = () => {
+          if (path.length == len) {
+              result.push([...path]);
+              return;
+          }
+  
+          /* 开始选择 */
+          for (let i = 0; i < len; i++) {
+              if (used[i] == true) {
+                  /* 如果在当前树枝中用过 */
+                  continue;
+              }
+              used[i] = true;
+              path.push(nums[i]);
+              backTracking();
+              path.pop();
+              used[i] = false;/* 回溯 */
+          }
+      }
+  
+      backTracking();
+      return result;
+  };
+  ```
+
+2. ##### 全排列Ⅱ
+
+   输入是一个包含重复数字的序列`nums`，依旧返回所有全排列，但是要求不重复
+
+   - 要求排列，就是每个位置的数字的选一遍
+   - 要求不重复，意味着每一轮选择的时候不能选不同的位置但是一样的数字
+
+* 首先将数组进行排序，然后使用`used`数组记录选择的路径，通过`used`数组来进行以上两个条件的剪枝
+
+  ```js
+  /**
+   * @param {number[]} nums
+   * @return {number[][]}
+   */
+  var permuteUnique = function (nums) {
+      /* 由于包含重复数字，故而要先将nums排序，然后再剪枝 */
+      nums.sort((a, b) => a - b);
+      const result = [];
+      const path = [];/* 路径以及解集 */
+      const len = nums.length;
+      const used = [];
+  
+      /* 回溯函数 */
+      const backTracking = function () {
+          if (path.length == len) {
+              result.push([...path]);
+              return;
+          }
+  
+          for (let i = 0; i < len; i++) {
+              if (used[i] == true) {
+                  /* 如果path已经选过这个位置了 */
+                  continue;
+              }
+              if (i>0 && nums[i] == nums[i - 1] && used[i - 1] == false) {
+                  /* 如果本层重复选择相同数字 */
+                  continue;
+              }
+  
+              used[i] = true;
+              path.push(nums[i]);
+              backTracking();
+              used[i] = false;
+              path.pop();/* 回溯 */
+          }
+      }
+  
+      backTracking();
+      return result;
+  };
+  ```
+
+* 同样是老方法，使用`prev`记录本层选过的值，保证不重复
+
+  ```js
+  /**
+   * @param {number[]} nums
+   * @return {number[][]}
+   */
+  var permuteUnique = function (nums) {
+      /* 由于包含重复数字，故而要先将nums排序，然后再剪枝 */
+      nums.sort((a, b) => a - b);
+      const result = [];
+      const path = [];/* 路径以及解集 */
+      const len = nums.length;
+      const used = [];
+  
+      /* 开始回溯 */
+      const backTracking = () => {
+          if (path.length === len) {
+              result.push([...path]);
+              return;
+          }
+  
+          /* 记录本轮选取的上一个数字，保证不重复 */
+          let prev = -11;
+          for (let i = 0; i < len; i++) {
+              if (used[i] == true) {
+                  continue;
+              }
+              let cur = nums[i];
+              if (prev === cur) {
+                  continue;/* 重复选取，剪枝 */
+              }
+              prev = cur;
+              path.push(cur);
+              used[i] = true;
+              backTracking();
+              used[i] = false;
+              path.pop();/* 回溯 */
+          }
+      }
+  
+      backTracking();
+      return result;
+  };
+  ```
+
+* 不排序，使用一个数组作为`HashSet`来保证每一轮不重复选一样的数字
+
+  ```js
+  /**
+   * @param {number[]} nums
+   * @return {number[][]}
+   */
+  var permuteUnique = function (nums) {
+      /* 不排序，在每一轮选择的时候使用一个Set来进行去重 */
+      const result = [];/* 最终的解集 */
+      const path = [];/* 保存每一轮的选择 */
+      const len = nums.length;
+      const used = [];
+  
+      const backTracking = function () {
+          if (path.length === len) {
+              result.push([...path]);
+              return;
+          }
+  
+          /* 使用一个数组记录本轮选过的数字，因为数字的范围是[-10, 10] */
+          const selectedArr = [];
+  
+          for (let i = 0; i < len; i++) {
+              if (used[i] === true) {
+                  /* 一个位置不重复选 */
+                  continue;
+              }
+              const cur = nums[i];
+              if (selectedArr[cur + 10] === true) {
+                  /* 保证这个数字还没选过 */
+                  continue;
+              }
+              selectedArr[cur + 10] = true;
+              used[i] = true;
+              path.push(cur);
+              backTracking();
+              used[i] = false;
+              path.pop();/* 回溯 */
+          }
+      }
+  
+      backTracking();
+      return result;
+  };
+  ```
+
+
   
 
 
