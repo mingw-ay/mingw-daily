@@ -7564,7 +7564,297 @@
   };
   ```
 
+#### 2022/04/22
 
+1. ##### 重新安排行程
+
+   输入一份航班列表`tickets`，其中每个元素都是包括航班起点和终点的二元组，即`tickets[i] = [from, to]`，返回一份行程规划，要求所有机票都用一次且只能用一次。
+
+   要求起点必须为`JFK`(肯尼迪国际机场)，返回的行程组合必须是字典序最小的。
+
+* 方法一，直接找，找到了一个路径`path`就与之前的字典序最小的路径`resultPath`进行对比，倘若字典序靠前则更新，由于会有重复的问题，并且判断字典序的操作靠后，基本上没有剪枝，以下在某些机票很多而且有重复的情况下会超时
+
+  ```js
+  /**
+   * @param {string[][]} tickets
+   * @return {string[]}
+   */
+  var findItinerary = function (tickets) {
+      let resultPath = []; /* 最终返回的行程数组 */
+      const path = ["JFK"]; /* 回溯过程中用于保存行程地列表,从JFK开始 */
+      const len = tickets.length; /* 总机票数，加1就是最终经过地所有地点 */
+      const used = []; /* 记录使用过的机票 */
+  
+      /* 排列问题，并且并不是怎么排都行，故而需要回溯，记录路径 */
+      /* 传入当前所在地 */
+      const backTracking = function (curAirport, used, path) {
+          if (path.length == len + 1) {
+              /* 如果还没有找到过 */
+              if (!resultPath.length) {
+                  resultPath = [...path];
+                  return;
+              }
+              /* 否则和上一个的字母序进行对比,从第二个开始比较 */
+              for (let i = 1; i <= len; i++) {
+                  if (path[i] > resultPath[i]) {
+                      return;
+                  }
+                  if (path[i] < resultPath[i]) {
+                      /* 如果新行程字母序靠前 */
+                      resultPath = [...path];
+                  }
+              }
+              return;
+          }
+  
+          /* 开始选择 */
+          for (let i = 0; i < len; i++) {
+              if (used[i] === true) {
+                  continue;
+              }
+              let selected = tickets[i];
+              if (selected[0] != curAirport) {
+                  /* 如果起点不同 */
+                  continue;
+              }
+              path.push(selected[1]);
+              used[i] = true;
+              backTracking(selected[1], used, path);
+              path.pop(); /* 回溯 */
+              used[i] = false;
+          }
+      };
+  
+      backTracking("JFK", used, path);
+      return resultPath;
+  };
+  ```
+
+* 首先进行排序，然后每一轮都用一个prev结点记录本轮前面选过的终点，保证不重复选相同的票
+
+  然而依然会超时，可能是由于死循环
+
+  ```js
+  /**
+   * @param {string[][]} tickets
+   * @return {string[]}
+   */
+  var findItinerary = function (tickets) {
+      /* 首先将tickets按照终点进行排序，达到去重的效果 */
+      /* 按照字典序从小到大排 */
+      tickets.sort((ticket1, ticket2) => {
+          if (ticket1[1] == ticket2[1]) {
+              return 0;
+          } else if (ticket1[1] < ticket2[1]) {
+              return -1;
+          }
+          return 1;
+      });
+      let resultPath = []; /* 记录字典序最靠前的行程数组 */
+      const path = ["JFK"]; /* 全局，记录整个回溯过程 */
+      const len = tickets.length; /* 机票的数量 */
+      const used = []; /* used数组保证重复选一张票 */
+  
+      const backTracking = function (from, path, used) {
+          /* 如果选完了，与resultPath进行字典序对比 */
+          if (path.length === len + 1) {
+              if (!resultPath.length) {
+                  resultPath = [...path];
+              } else {
+                  for (let i = 0; i <= len; i++) {
+                      /* 比较字典序 */
+                      if (resultPath[i] < path[i]) {
+                          /* 如果resultPath靠前，跳出循环 */
+                          break;
+                      } else if (resultPath[i] > path[i]) {
+                          /* 反之则更新 */
+                          resultPath = [...path];
+                          break;
+                      }
+                  }
+              }
+              return;
+          }
+  
+          /* 开始选，一个prev记录本轮上一个选择的终点 */
+          let prev = "";
+          for (let i = 0; i < len; i++) {
+              let cur = tickets[i];
+              let curFrom = cur[0];
+              let curTo = cur[1];
+              if (used[i] == true || curFrom != from) {
+                  continue;
+              }
+              if (curTo == prev) {
+                  continue; /* 不能重复选 */
+              }
+              prev = curTo;
+              used[i] = true;
+              path.push(curTo);
+              backTracking(curTo, path, used);
+              used[i] = false;
+              path.pop(); /* 回溯 */
+          }
+      };
+  
+      backTracking("JFK", path, used);
+      return resultPath;
+  };
+  ```
+
+* 以上方法是，依次选出所有的行程可能性，然后一个一个地对比行程之间的字母序，这个过程过于费时
+
+  - 故而应该首先将所有机票按照字母序从小到大排列
+
+  - 并且应该使用一个`Map`结构来存储起点和其对应的所有终点的映射关系
+  - 而值同样应该是一个`Map`，`JavaScript`中的`Map`会存储插入数据的顺序，终点的名字作为键，该终点机票数作为值
+  - 每次只要遍历当前起点对应的所有终点可能性，按照字母序进行遍历，同时通过`Map.set(toAirport,count-1)`;的方式进行处理。同时进行回溯，每次回溯完毕都判断是否已经找到需要的行程数组。找到了即返回
+  - 关键是想清楚使用什么数据结构来存储这个起终点的对应关系
+
+  ```js
+  /**
+   * @param {string[][]} tickets
+   * @return {string[]}
+   */
+  var findItinerary = function (tickets) {
+      /* 将所有机票加入一个Map，键为起点，而值是一个<终点站名，票数>的Map */
+      /* 首先将机票按照终点的字典序排列 */
+      tickets.sort((t1, t2) => {
+          let des1 = t1[1];
+          let des2 = t2[1];
+          if (des1 > des2) {
+              return 1;
+          } else if (des1 < des2) {
+              return -1;
+          } else return 0;
+      })
+  
+  
+      const ticketsMap = new Map();
+      /* 遍历tickets */
+      for (const ticket of tickets) {
+          let from = ticket[0];
+          let to = ticket[1];
+          let toMap = ticketsMap.get(from);/* 得到这个起点对应的map */
+          if (!toMap) {
+              toMap = new Map();
+              ticketsMap.set(from, toMap);
+          }
+          toMap.set(to, (toMap.get(to) || 0) + 1);
+      }
+  
+  
+      let result = [];/* 记录最终的行程 */
+      const path = ["JFK"];/* 回溯过程中用于记录的全局变量 */
+      const len = tickets.length;
+  
+      /* 回溯函数 */
+      const backTracking = function (from, path) {
+          /* 如果找到了 */
+          if (path.length == len + 1) {
+              result = [...path];
+              return;
+          }
+  
+          /* 根据起点from得到所有终点组成的Map */
+          /* JavaScript的Map会保存插入的顺序 */
+          let toMap = ticketsMap.get(from);
+          if (!toMap) {
+              return;
+          }
+          /* 遍历toMap一旦找到了就退出循环 */
+          for (const [to, count] of toMap) {
+              /* to指的是终点，而count指的是还剩下的个数 */
+              if (count == 0) {
+                  continue;
+              }
+              toMap.set(to, count - 1);/* 票数减一 */
+              path.push(to);
+              backTracking(to, path);
+              toMap.set(to, count);/* 回溯 */
+              path.pop();/* 回溯 */
+              /* 判断是否找到了 */
+              if (result.length) {
+                  break;
+              }
+          }
+      }
+  
+      backTracking("JFK", path);
+      return result;
+  };
+  ```
+
+* 由于这里的键只有字符串，故而完全可以采用`Object`来作为`HashMap`使用，同时由于只有字符串作为键，遍历的时候会保留插入顺序
+
+  ```js
+  /**
+   * @param {string[][]} tickets
+   * @return {string[]}
+   */
+  var findItinerary = function (tickets) {
+      /* 由于这里涉及到的键只有字符串 */
+      /* 同时只在初始化阶段要进行键的增加 */
+      /* 故而使用对象作为Map使用 */
+  
+      /* 首先将tickets按照终点字母序排列 */
+      tickets.sort((t1, t2) => {
+          const des1 = t1[1];
+          const des2 = t2[1];
+  
+          if (des1 > des2) {
+              return 1;
+          } else if (des1 == des2) {
+              return 0;
+          } else {
+              return -1;
+          }
+      })
+  
+      /* 初始化起点和终点之间的对应关系，起点和终点都有可能重复 */
+      const ticketsMap = {};
+      /* 遍历tickets */
+      for (const [from, to] of tickets) {
+          if (!ticketsMap.hasOwnProperty(from)) {
+              ticketsMap[from] = {};
+          }
+          /* 记录去这个终点的车票数量 */
+          ticketsMap[from][to] = (ticketsMap[from][to] || 0) + 1;
+      }
+  
+      const len = tickets.length;
+      const result = ["JFK"];/* 全局记录结果集 */
+  
+      /* 回溯函数,传入当前起点,返回一个Boolean值，表示是否已经找到了 */
+      const backTracking = function (from, result, ticketsMap) {
+          if (result.length == len + 1) {
+              return true;
+          }
+  
+          let desMap = ticketsMap[from] || null;/* 得到记录对应的终点名字以及机票数的对象 */
+          if (desMap != null) {
+              for (const destination of Object.getOwnPropertyNames(desMap)) {
+                  if (desMap[destination] == 0) {
+                      continue;
+                  }
+                  desMap[destination]--;/* 机票数减一 */
+                  result.push(destination);
+                  if (backTracking(destination, result, ticketsMap)) {
+                      return true;
+                  }
+                  desMap[destination]++;
+                  result.pop();/* 回溯 */
+              }
+          }
+          return false;
+      }
+  
+      backTracking("JFK", result, ticketsMap);
+      return result;
+  };
+  ```
+
+  
   
 
 
