@@ -7854,7 +7854,217 @@
   };
   ```
 
+#### 2022/04/23
+
+1. ##### N皇后
+
+   **N皇后问题**要求将`n`个皇后放置在`n×n`的棋局上，并且使得彼此之间不能相互攻击。
+
+   而在同一行同一列或者是同一斜行的皇后之间都会相互攻击。
+
+   输入一个整数n，返回所有解决方案，输入为一个整数`n`,返回所有解决方案，每个解决方案都是一个一维数组，其中每一个元素是一个长度为`n`的字符串，表示行，其中`'Q'`和`'.'`分别表示皇后以及空位。
+
+* 使用一个二维数组来记录解决方案，一行一行地进行回溯选取。
+
+  采用三个数组进行剪枝：
+
+  - `usedColumn`表示使用过的列索引，每个元素为`Boolean`值
+  - `rowColumnSum`表示列索引和行索引地和不能重复，即左倾斜行
+  - `rowColumnDiff`表示列索引与行索引的差，大小在`[1-n,n-1]`之间，映射到`[0,2n-2]`中去
+
+  ```js
+  /**
+   * @param {number} n
+   * @return {string[][]}
+   */
+  var solveNQueens = function (n) {
+      /* N皇后问题，一行一行地选，保证所有的皇后不能在同一行，一列或者交叉 */
+      const result = [];/* 所有解决方案 */
+      /* 初始化一个解决方案，n×n的数组 */
+      const path = [];
+      for (let i = 0; i < n; i++) {
+          path[i] = new Array(n).fill(".");
+      }
+      const usedColumn = [];/* 记录每一行用过的列数，保证不在同一列 */
+      /* 列数和行数相加不能重复即左方向不能交叉 */
+      const rowColumnSum = [];
+      /* 列数减行数(colIndex - rowIndex)不能重复，即右斜方向不能交叉 */
+      /* 由于可能为负，最小为1-n,映射到0 */
+      const rowColumnDiff = [];
   
+      const backTracking = function (curRowIndex, path, result) {
+          /* 回溯，传入当前行 */
+          if (curRowIndex == n) {
+              /* 如果找到了 */
+              let newResult = [];
+              for (let i = 0; i < n; i++) {
+                  newResult.push(path[i].join(""));
+              }
+              result.push(newResult);
+              return;
+          }
+  
+          /* 开始选择当前行位置 */
+          for (let i = 0; i < n; i++) {
+              /* 剪枝 */
+              if (usedColumn[i] == true) {
+                  continue;
+              }
+              if (rowColumnSum[i + curRowIndex] == true) {
+                  continue;
+              }
+              if (rowColumnDiff[i - curRowIndex + n - 1] == true) {
+                  continue;
+              }
+              usedColumn[i] = true;
+              rowColumnSum[i + curRowIndex] = true;
+              rowColumnDiff[i - curRowIndex + n - 1] = true;
+              path[curRowIndex][i] = "Q";
+              backTracking(curRowIndex + 1, path, result);
+              path[curRowIndex][i] = ".";
+              usedColumn[i] = false;
+              rowColumnSum[i + curRowIndex] = false;
+              rowColumnDiff[i - curRowIndex + n - 1] = false;/* 回溯 */
+          }
+      }
+  
+      backTracking(0, path, result);
+      return result;
+  };
+  ```
+
+* 直接使用一个数组`possibleRows`记录所有可能的行字符串，然后就相当于是一个排列问题了，就是剪枝的条件比较多。同时避免了需要将二维数组进行`join`操作，是`解决方案个数 * n^2`的时间复杂度
+
+  ```js
+  /**
+   * @param {number} n
+   * @return {string[][]}
+   */
+  var solveNQueens = function (n) {
+      /* 首先得到所有可能的行的字符串 */
+      const possibleRows = [];
+      const row = new Array(n).fill(".");
+      for (let i = 0; i < n; i++) {
+          row[i] = "Q";
+          possibleRows.push(row.join(""));
+          row[i] = ".";
+      }
+  
+      /* 结果集以及一个全局的解决方案用于回溯 */
+      const result = [];
+      const path = [];
+      /* 剪枝用的数组 */
+      const usedColumn = [];/* 列不能相同 */
+      const rowColumnSum = [];/* 左斜行不能重复 */
+      const rowColumnDiff = [];/* 右斜行不能重复 */
+  
+      /* 回溯函数,其实也是某种排列问题 */
+      const backTracking = function (curRow, path, result) {
+          /* 传入当前在选择行索引 */
+          if (curRow == n) {
+              result.push([...path]);/* 找到了 */
+              return;
+          }
+  
+          /* 开始选择位置 */
+          for (let curCol = 0; curCol < n; curCol++) {
+              /* 剪枝 */
+              if (usedColumn[curCol] == true) {
+                  continue;
+              }
+              if (rowColumnSum[curCol + curRow] == true) {
+                  continue;
+              }
+              if (rowColumnDiff[curCol - curRow - 1 + n] == true) {
+                  continue;
+              }
+              usedColumn[curCol] = true;
+              rowColumnSum[curCol + curRow] = true;
+              rowColumnDiff[curCol - curRow - 1 + n] = true;
+              path.push(possibleRows[curCol]);
+              backTracking(curRow + 1, path, result);/* 递归 */
+              path.pop();
+              usedColumn[curCol] = false;
+              rowColumnSum[curCol + curRow] = false;
+              rowColumnDiff[curCol - curRow - 1 + n] = false;/* 回溯 */
+          }
+      }
+  
+      backTracking(0, path, result);
+      return result;
+  };
+  ```
+
+* 也可以不使用数组记录占用过的列，行列之和，行列之差，每次只要在回溯之前判断选择的位置上方，右斜上方，左斜上方是否出现过皇后即可
+
+  ```js
+  /**
+   * @param {number} n
+   * @return {string[][]}
+   */
+  var solveNQueens = function (n) {
+      /* 首先得到所有可能的行的字符串 */
+      const possibleRows = [];
+      const row = new Array(n).fill(".");
+      for (let i = 0; i < n; i++) {
+          row[i] = "Q";
+          possibleRows.push(row.join(""));
+          row[i] = ".";
+      }
+  
+      /* 结果集以及一个全局的解决方案用于回溯 */
+      const result = [];
+      const chessBoard = [];
+  
+      /* 每一行都选择一个位置放皇后,传入当前行索引 */
+      const backTracking = function (curRow) {
+          /* 如果找齐了 */
+          if (curRow == n) {
+              result.push([...chessBoard]);
+          }
+  
+          /* 开始当前选择一列放皇后 */
+          for (let curCol = 0; curCol < n; curCol++) {
+              /* 首先判断能不能放，然后回溯 */
+              if (isValid(curRow, curCol)) {
+                  chessBoard.push(possibleRows[curCol]);
+                  backTracking(curRow + 1);/* 递归调用 */
+                  chessBoard.pop();/* 回溯 */
+              }
+          }
+      }
+  
+      const isValid = function (row, col) {
+          /* 同一列不能出现皇后 */
+          for (let i = 0; i < row; i++) {
+              if (chessBoard[i][col] === "Q") {
+                  return false;
+              }
+          }
+  
+          /* 右斜上方即45°斜线方向不出现皇后 */
+          for (let i = row - 1, j = col + 1; i >= 0 && j < n; i--, j++) {
+              if (chessBoard[i][j] === "Q") {
+                  return false;
+              }
+          }
+  
+          /* 左斜上方即135°斜线方向不出现皇后 */
+          for (let i = row - 1, j = col - 1; i >= 0 && j >= 0; i--, j--) {
+              if (chessBoard[i][j] === "Q") {
+                  return false;
+              }
+          }
+  
+          return true;
+      }
+  
+      backTracking(0);
+      return result;
+  };
+  ```
+
+    
   
 
 
